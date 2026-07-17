@@ -8,7 +8,7 @@ interface ArtCanvasProps {
 }
 
 export interface ArtCanvasRef {
-  exportHighRes: (resolutionMultiplier: number) => string;
+  exportHighRes: (resolutionMultiplier: number, aspect?: '1:1' | '4:5') => string;
   resetGrid: () => void;
 }
 
@@ -36,8 +36,8 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
 
   // Expose methods to parent
   useImperativeHandle(ref, () => ({
-    exportHighRes: (multiplier: number) => {
-      return renderHighRes(multiplier);
+    exportHighRes: (multiplier: number, aspect?: '1:1' | '4:5') => {
+      return renderHighRes(multiplier, aspect);
     },
     resetGrid: () => {
       initializeGrid(dimensions.width, dimensions.height);
@@ -131,13 +131,13 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
       const isColorInverted = settings.colorInverted;
       
       // Determine final background & stroke colors
-      let bgColor = isDark ? '#0A0A0A' : '#fcfbf9';
+      let bgColor = isDark ? '#0A0A0A' : '#FAF9F6';
       let strokeColor = isDark ? 'rgba(255, 255, 255, 0.85)' : 'rgba(18, 18, 18, 0.85)';
       let pointColor = isDark ? 'rgba(255, 255, 255, 0.95)' : 'rgba(18, 18, 18, 0.95)';
 
       if (isColorInverted) {
         const tempBg = bgColor;
-        bgColor = strokeColor.startsWith('rgba(18') ? '#0A0A0A' : '#fcfbf9';
+        bgColor = strokeColor.startsWith('rgba(18') ? '#0A0A0A' : '#FAF9F6';
         strokeColor = tempBg === '#0A0A0A' ? 'rgba(18, 18, 18, 0.85)' : 'rgba(255, 255, 255, 0.85)';
         pointColor = strokeColor;
       }
@@ -390,6 +390,13 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
         }
       }
 
+      // Minimalist sappy.error signature in bottom-right corner
+      ctx.font = '600 10px "JetBrains Mono", monospace';
+      ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(18, 18, 18, 0.4)';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('sappy.error', dimensions.width - 15, dimensions.height - 15);
+
       // Rotate last mouse positions to measure drag speed vectors
       lastMousePosRef.current = { ...mousePosRef.current };
 
@@ -478,9 +485,15 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
   };
 
   // Render High-Resolution static version for crispy, perfect exports
-  const renderHighRes = (multiplier: number): string => {
+  const renderHighRes = (multiplier: number, aspect: '1:1' | '4:5' = '1:1'): string => {
     const targetW = dimensions.width * multiplier;
-    const targetH = dimensions.height * multiplier;
+    let targetH = dimensions.height * multiplier;
+    let offsetY = 0;
+
+    if (aspect === '4:5') {
+      targetH = targetW * 1.25;
+      offsetY = (targetH - targetW) / 2;
+    }
 
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = targetW;
@@ -491,13 +504,13 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
     const isDark = settings.darkTheme;
     const isColorInverted = settings.colorInverted;
     
-    let bgColor = isDark ? '#0A0A0A' : '#fcfbf9';
+    let bgColor = isDark ? '#0A0A0A' : '#FAF9F6';
     let strokeColor = isDark ? 'rgba(255, 255, 255, 0.9)' : 'rgba(18, 18, 18, 0.9)';
     let pointColor = isDark ? 'rgba(255, 255, 255, 0.95)' : 'rgba(18, 18, 18, 0.95)';
 
     if (isColorInverted) {
       const tempBg = bgColor;
-      bgColor = strokeColor.startsWith('rgba(18') ? '#0A0A0A' : '#fcfbf9';
+      bgColor = strokeColor.startsWith('rgba(18') ? '#0A0A0A' : '#FAF9F6';
       strokeColor = tempBg === '#0A0A0A' ? 'rgba(18, 18, 18, 0.9)' : 'rgba(255, 255, 255, 0.9)';
       pointColor = strokeColor;
     }
@@ -505,7 +518,7 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
     tempCtx.fillStyle = bgColor;
     tempCtx.fillRect(0, 0, targetW, targetH);
 
-    // Subtle paper noise grain at high resolution
+    // Subtle paper noise grain at high resolution over the whole canvas
     if (settings.paperTexture) {
       tempCtx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.015)' : 'rgba(0, 0, 0, 0.025)';
       for (let i = 0; i < targetW; i += Math.max(3, multiplier)) {
@@ -526,12 +539,12 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
     tempCtx.lineCap = 'round';
     tempCtx.lineJoin = 'round';
 
-    // Helper to scale points
+    // Helper to scale points and apply centering offset for taller aspect ratios
     const getP = (c: number, r: number) => {
       const p = points[c][r];
       return {
         x: p.x * multiplier,
-        y: p.y * multiplier
+        y: p.y * multiplier + offsetY
       };
     };
 
@@ -598,6 +611,16 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
         }
       }
     }
+
+    // Draw minimalist signature "sappy.error" in bottom-right corner
+    const sigText = 'sappy.error';
+    tempCtx.font = `600 ${Math.max(12, multiplier * 11)}px "JetBrains Mono", monospace`;
+    tempCtx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.45)' : 'rgba(18, 18, 18, 0.45)';
+    tempCtx.textAlign = 'right';
+    tempCtx.textBaseline = 'bottom';
+    
+    const margin = Math.max(15, multiplier * 20);
+    tempCtx.fillText(sigText, targetW - margin, targetH - margin);
 
     return tempCanvas.toDataURL('image/png');
   };

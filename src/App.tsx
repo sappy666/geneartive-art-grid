@@ -52,6 +52,7 @@ export default function App() {
   
   // High-Res Export choices
   const [exportRes, setExportRes] = useState<ExportResolution>('4x');
+  const [exportAspect, setExportAspect] = useState<'1:1' | '4:5'>('1:1');
   const [isExporting, setIsExporting] = useState(false);
   
   // Custom JSON sharing state
@@ -235,7 +236,7 @@ export default function App() {
         else if (exportRes === '4x') multiplier = 4;
         else if (exportRes === '8x') multiplier = 8;
 
-        const dataUrl = canvasRef.current?.exportHighRes(multiplier);
+        const dataUrl = canvasRef.current?.exportHighRes(multiplier, exportAspect);
         if (dataUrl) {
           const link = document.createElement('a');
           const timeStamp = new Date().toISOString().slice(0, 10);
@@ -243,7 +244,8 @@ export default function App() {
             .toLowerCase()
             .replace(/\s+/g, '-');
           
-          link.download = `cuadricula_${nameClean}_${exportRes}_${timeStamp}.png`;
+          const aspectClean = exportAspect.replace(':', '-');
+          link.download = `cuadricula_${nameClean}_${exportRes}_${aspectClean}_${timeStamp}.png`;
           link.href = dataUrl;
           document.body.appendChild(link);
           link.click();
@@ -334,7 +336,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="font-display font-bold text-xs tracking-widest uppercase">
-              Generative Grid Art
+              sappy.error
             </h1>
             <p className="font-mono text-[9px] tracking-widest text-zinc-500 uppercase">
               Estudio Creativo Monocromo v1.2
@@ -1301,36 +1303,80 @@ export default function App() {
               </div>
 
               {/* Export Panel */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-widest text-zinc-500">
-                  <span>Resolución de Descarga</span>
-                  <span className="font-bold text-zinc-400">PNG</span>
+              <div className="space-y-3">
+                {/* Resolution Select */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-widest text-zinc-500">
+                    <span>Resolución de Descarga</span>
+                    <span className="font-bold text-zinc-400">PNG</span>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-1">
+                    {[
+                      { id: '1x', label: '1x', title: 'Medida real del lienzo' },
+                      { id: '2x', label: '2x', title: 'HD - 1200px' },
+                      { id: '4x', label: '4x', title: '4K nítido - 2400px' },
+                      { id: '8x', label: '8x', title: 'Impresión Ultra - 4800px' }
+                    ].map((res) => (
+                      <button
+                        key={res.id}
+                        onClick={() => setExportRes(res.id as ExportResolution)}
+                        className={`py-2 text-center rounded-lg border text-[10px] font-mono transition-all duration-300 cursor-pointer ${
+                          exportRes === res.id
+                            ? settings.darkTheme
+                              ? 'bg-white border-white text-black font-bold shadow-md'
+                              : 'bg-neutral-900 border-neutral-800 text-white font-bold'
+                            : settings.darkTheme
+                            ? 'border-white/5 text-zinc-400 hover:border-white/10 hover:text-white bg-transparent'
+                            : 'border-neutral-200 text-neutral-400 hover:border-neutral-300 bg-transparent'
+                        }`}
+                        title={res.title}
+                      >
+                        {res.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-4 gap-1">
-                  {[
-                    { id: '1x', label: '1x', title: 'Medida real del lienzo' },
-                    { id: '2x', label: '2x', title: 'HD - 1200px' },
-                    { id: '4x', label: '4x', title: '4K nítido - 2400px' },
-                    { id: '8x', label: '8x', title: 'Impresión Ultra - 4800px' }
-                  ].map((res) => (
+                {/* Aspect Ratio Select */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-widest text-zinc-500">
+                    <span>Proporción de Aspecto</span>
+                    <span className="font-bold text-zinc-400">{exportAspect}</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-1.5">
                     <button
-                      key={res.id}
-                      onClick={() => setExportRes(res.id as ExportResolution)}
+                      onClick={() => setExportAspect('1:1')}
                       className={`py-2 text-center rounded-lg border text-[10px] font-mono transition-all duration-300 cursor-pointer ${
-                        exportRes === res.id
+                        exportAspect === '1:1'
                           ? settings.darkTheme
-                            ? 'bg-white border-white text-black font-bold shadow-md'
+                            ? 'bg-white border-white text-black font-bold shadow-sm'
                             : 'bg-neutral-900 border-neutral-800 text-white font-bold'
                           : settings.darkTheme
                           ? 'border-white/5 text-zinc-400 hover:border-white/10 hover:text-white bg-transparent'
                           : 'border-neutral-200 text-neutral-400 hover:border-neutral-300 bg-transparent'
                       }`}
-                      title={res.title}
+                      title="Diseño cuadrado completo"
                     >
-                      {res.label}
+                      1:1 (CUADRADO)
                     </button>
-                  ))}
+                    <button
+                      onClick={() => setExportAspect('4:5')}
+                      className={`py-2 text-center rounded-lg border text-[10px] font-mono transition-all duration-300 cursor-pointer ${
+                        exportAspect === '4:5'
+                          ? settings.darkTheme
+                            ? 'bg-white border-white text-black font-bold shadow-sm'
+                            : 'bg-neutral-900 border-neutral-800 text-white font-bold'
+                          : settings.darkTheme
+                          ? 'border-white/5 text-zinc-400 hover:border-white/10 hover:text-white bg-transparent'
+                          : 'border-neutral-200 text-neutral-400 hover:border-neutral-300 bg-transparent'
+                      }`}
+                      title="Marco de retrato 4:5 con el diseño cuadrado centrado"
+                    >
+                      4:5 (RETRATO MARCO)
+                    </button>
+                  </div>
                 </div>
 
                 <button
