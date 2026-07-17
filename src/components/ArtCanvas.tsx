@@ -982,6 +982,168 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
             ctx.restore();
           }
         }
+      } else if (settings.renderMode === 'isometric-cubes') {
+        const size = Math.max(5, settings.pointSize * 2.2);
+        const w = size * 0.86;
+        const h = size * 0.5;
+        
+        for (let c = 0; c < cols; c++) {
+          for (let r = 0; r < rows; r++) {
+            const p = points[c][r];
+            
+            // Top Face
+            ctx.fillStyle = accent1 || (isDarkTheme ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.12)');
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = Math.max(1, settings.strokeWidth * 0.7);
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y - size);
+            ctx.lineTo(p.x + w, p.y - h);
+            ctx.lineTo(p.x, p.y);
+            ctx.lineTo(p.x - w, p.y - h);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Left Face
+            ctx.fillStyle = accent2 || (isDarkTheme ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.22)');
+            ctx.beginPath();
+            ctx.moveTo(p.x - w, p.y - h);
+            ctx.lineTo(p.x, p.y);
+            ctx.lineTo(p.x, p.y + size);
+            ctx.lineTo(p.x - w, p.y + size - h);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Right Face
+            ctx.fillStyle = accent3 || (isDarkTheme ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.35)');
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p.x + w, p.y - h);
+            ctx.lineTo(p.x + w, p.y + size - h);
+            ctx.lineTo(p.x, p.y + size);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+          }
+        }
+      } else if (settings.renderMode === 'concentric-rings') {
+        const baseRadius = Math.max(4, settings.pointSize * 1.5);
+        ctx.lineWidth = settings.strokeWidth;
+        for (let c = 0; c < cols; c++) {
+          for (let r = 0; r < rows; r++) {
+            const p = points[c][r];
+            const dx = p.x - p.x0;
+            const dy = p.y - p.y0;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const scale = 1 + dist * 0.04;
+            
+            // Ring 1
+            ctx.strokeStyle = accent1 || strokeColor;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, baseRadius * 0.4 * scale, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Ring 2
+            ctx.strokeStyle = accent2 || strokeColor;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, baseRadius * 0.8 * scale, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Ring 3
+            ctx.strokeStyle = accent3 || strokeColor;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, baseRadius * 1.3 * scale, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+      } else if (settings.renderMode === 'cross-cross') {
+        const size = Math.max(5, settings.strokeWidth * 3 + 6);
+        ctx.lineWidth = settings.strokeWidth;
+        for (let c = 0; c < cols; c++) {
+          for (let r = 0; r < rows; r++) {
+            const p = points[c][r];
+            const dx = p.x - p.x0;
+            const dy = p.y - p.y0;
+            const angle = Math.atan2(dy, dx);
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            ctx.strokeStyle = (dist > 5 && accent3) ? accent3 : strokeColor;
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            if (dist > 2) {
+              ctx.rotate(angle);
+            }
+            
+            // Horizontal line
+            ctx.beginPath();
+            ctx.moveTo(-size, 0);
+            ctx.lineTo(size, 0);
+            ctx.stroke();
+            
+            // Vertical line
+            ctx.beginPath();
+            ctx.moveTo(0, -size);
+            ctx.lineTo(0, size);
+            ctx.stroke();
+
+            // Diagonal ticks if displaced
+            if (dist > 5) {
+              ctx.strokeStyle = accent1 || strokeColor;
+              ctx.beginPath();
+              ctx.moveTo(-size * 0.5, -size * 0.5);
+              ctx.lineTo(size * 0.5, size * 0.5);
+              ctx.moveTo(size * 0.5, -size * 0.5);
+              ctx.lineTo(-size * 0.5, size * 0.5);
+              ctx.stroke();
+            }
+            ctx.restore();
+          }
+        }
+      } else if (settings.renderMode === 'triangles') {
+        ctx.lineWidth = settings.strokeWidth;
+        for (let c = 0; c < cols - 1; c++) {
+          for (let r = 0; r < rows - 1; r++) {
+            const pTL = points[c][r];
+            const pTR = points[c + 1][r];
+            const pBL = points[c][r + 1];
+            const pBR = points[c + 1][r + 1];
+            
+            // Draw Triangle 1 (TL - TR - BL)
+            ctx.strokeStyle = strokeColor;
+            const fillRatio = (c + r) % 3;
+            if (fillRatio === 0) {
+              ctx.fillStyle = accent1 || (isDarkTheme ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)');
+            } else if (fillRatio === 1) {
+              ctx.fillStyle = accent2 || (isDarkTheme ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)');
+            } else {
+              ctx.fillStyle = accent3 || (isDarkTheme ? 'rgba(255, 255, 255, 0.14)' : 'rgba(0, 0, 0, 0.1)');
+            }
+            ctx.beginPath();
+            ctx.moveTo(pTL.x, pTL.y);
+            ctx.lineTo(pTR.x, pTR.y);
+            ctx.lineTo(pBL.x, pBL.y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Draw Triangle 2 (TR - BR - BL)
+            if (fillRatio === 0) {
+              ctx.fillStyle = accent3 || (isDarkTheme ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)');
+            } else if (fillRatio === 1) {
+              ctx.fillStyle = accent1 || (isDarkTheme ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)');
+            } else {
+              ctx.fillStyle = accent2 || (isDarkTheme ? 'rgba(255, 255, 255, 0.07)' : 'rgba(0, 0, 0, 0.05)');
+            }
+            ctx.beginPath();
+            ctx.moveTo(pTR.x, pTR.y);
+            ctx.lineTo(pBR.x, pBR.y);
+            ctx.lineTo(pBL.x, pBL.y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+          }
+        }
       }
 
       if (settings.includeSignature) {
@@ -1502,6 +1664,170 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
             tempCtx.stroke();
           }
           tempCtx.restore();
+        }
+      }
+    } else if (settings.renderMode === 'isometric-cubes') {
+      const size = Math.max(5, settings.pointSize * 2.2) * multiplier;
+      const w = size * 0.86;
+      const h = size * 0.5;
+      
+      for (let c = 0; c < cols; c++) {
+        for (let r = 0; r < rows; r++) {
+          const p = getP(c, r);
+          
+          // Top Face
+          tempCtx.fillStyle = accent1 || (isDarkTheme ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.12)');
+          tempCtx.strokeStyle = strokeColor;
+          tempCtx.lineWidth = Math.max(1, settings.strokeWidth * multiplier * 0.7);
+          tempCtx.beginPath();
+          tempCtx.moveTo(p.x, p.y - size);
+          tempCtx.lineTo(p.x + w, p.y - h);
+          tempCtx.lineTo(p.x, p.y);
+          tempCtx.lineTo(p.x - w, p.y - h);
+          tempCtx.closePath();
+          tempCtx.fill();
+          tempCtx.stroke();
+
+          // Left Face
+          tempCtx.fillStyle = accent2 || (isDarkTheme ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.22)');
+          tempCtx.beginPath();
+          tempCtx.moveTo(p.x - w, p.y - h);
+          tempCtx.lineTo(p.x, p.y);
+          tempCtx.lineTo(p.x, p.y + size);
+          tempCtx.lineTo(p.x - w, p.y + size - h);
+          tempCtx.closePath();
+          tempCtx.fill();
+          tempCtx.stroke();
+
+          // Right Face
+          tempCtx.fillStyle = accent3 || (isDarkTheme ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.35)');
+          tempCtx.beginPath();
+          tempCtx.moveTo(p.x, p.y);
+          tempCtx.lineTo(p.x + w, p.y - h);
+          tempCtx.lineTo(p.x + w, p.y + size - h);
+          tempCtx.lineTo(p.x, p.y + size);
+          tempCtx.closePath();
+          tempCtx.fill();
+          tempCtx.stroke();
+        }
+      }
+    } else if (settings.renderMode === 'concentric-rings') {
+      const baseRadius = Math.max(4, settings.pointSize * 1.5) * multiplier;
+      tempCtx.lineWidth = settings.strokeWidth * multiplier;
+      for (let c = 0; c < cols; c++) {
+        for (let r = 0; r < rows; r++) {
+          const p = getP(c, r);
+          const pOrig = points[c][r];
+          const dx = pOrig.x - pOrig.x0;
+          const dy = pOrig.y - pOrig.y0;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const scale = 1 + dist * 0.04;
+          
+          // Ring 1
+          tempCtx.strokeStyle = accent1 || strokeColor;
+          tempCtx.beginPath();
+          tempCtx.arc(p.x, p.y, baseRadius * 0.4 * scale, 0, Math.PI * 2);
+          tempCtx.stroke();
+          
+          // Ring 2
+          tempCtx.strokeStyle = accent2 || strokeColor;
+          tempCtx.beginPath();
+          tempCtx.arc(p.x, p.y, baseRadius * 0.8 * scale, 0, Math.PI * 2);
+          tempCtx.stroke();
+          
+          // Ring 3
+          tempCtx.strokeStyle = accent3 || strokeColor;
+          tempCtx.beginPath();
+          tempCtx.arc(p.x, p.y, baseRadius * 1.3 * scale, 0, Math.PI * 2);
+          tempCtx.stroke();
+        }
+      }
+    } else if (settings.renderMode === 'cross-cross') {
+      const size = Math.max(5, settings.strokeWidth * 3 + 6) * multiplier;
+      tempCtx.lineWidth = settings.strokeWidth * multiplier;
+      for (let c = 0; c < cols; c++) {
+        for (let r = 0; r < rows; r++) {
+          const p = getP(c, r);
+          const pOrig = points[c][r];
+          const dx = pOrig.x - pOrig.x0;
+          const dy = pOrig.y - pOrig.y0;
+          const angle = Math.atan2(dy, dx);
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          
+          tempCtx.strokeStyle = (dist > 5 && accent3) ? accent3 : strokeColor;
+          tempCtx.save();
+          tempCtx.translate(p.x, p.y);
+          if (dist > 2) {
+            tempCtx.rotate(angle);
+          }
+          
+          // Horizontal line
+          tempCtx.beginPath();
+          tempCtx.moveTo(-size, 0);
+          tempCtx.lineTo(size, 0);
+          tempCtx.stroke();
+          
+          // Vertical line
+          tempCtx.beginPath();
+          tempCtx.moveTo(0, -size);
+          tempCtx.lineTo(0, size);
+          tempCtx.stroke();
+
+          // Diagonal ticks if displaced
+          if (dist > 5) {
+            tempCtx.strokeStyle = accent1 || strokeColor;
+            tempCtx.beginPath();
+            tempCtx.moveTo(-size * 0.5, -size * 0.5);
+            tempCtx.lineTo(size * 0.5, size * 0.5);
+            tempCtx.moveTo(size * 0.5, -size * 0.5);
+            tempCtx.lineTo(-size * 0.5, size * 0.5);
+            tempCtx.stroke();
+          }
+          tempCtx.restore();
+        }
+      }
+    } else if (settings.renderMode === 'triangles') {
+      tempCtx.lineWidth = settings.strokeWidth * multiplier;
+      for (let c = 0; c < cols - 1; c++) {
+        for (let r = 0; r < rows - 1; r++) {
+          const pTL = getP(c, r);
+          const pTR = getP(c + 1, r);
+          const pBL = getP(c, r + 1);
+          const pBR = getP(c + 1, r + 1);
+          
+          // Draw Triangle 1 (TL - TR - BL)
+          tempCtx.strokeStyle = strokeColor;
+          const fillRatio = (c + r) % 3;
+          if (fillRatio === 0) {
+            tempCtx.fillStyle = accent1 || (isDarkTheme ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)');
+          } else if (fillRatio === 1) {
+            tempCtx.fillStyle = accent2 || (isDarkTheme ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)');
+          } else {
+            tempCtx.fillStyle = accent3 || (isDarkTheme ? 'rgba(255, 255, 255, 0.14)' : 'rgba(0, 0, 0, 0.1)');
+          }
+          tempCtx.beginPath();
+          tempCtx.moveTo(pTL.x, pTL.y);
+          tempCtx.lineTo(pTR.x, pTR.y);
+          tempCtx.lineTo(pBL.x, pBL.y);
+          tempCtx.closePath();
+          tempCtx.fill();
+          tempCtx.stroke();
+          
+          // Draw Triangle 2 (TR - BR - BL)
+          if (fillRatio === 0) {
+            tempCtx.fillStyle = accent3 || (isDarkTheme ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)');
+          } else if (fillRatio === 1) {
+            tempCtx.fillStyle = accent1 || (isDarkTheme ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)');
+          } else {
+            tempCtx.fillStyle = accent2 || (isDarkTheme ? 'rgba(255, 255, 255, 0.07)' : 'rgba(0, 0, 0, 0.05)');
+          }
+          tempCtx.beginPath();
+          tempCtx.moveTo(pTR.x, pTR.y);
+          tempCtx.lineTo(pBR.x, pBR.y);
+          tempCtx.lineTo(pBL.x, pBL.y);
+          tempCtx.closePath();
+          tempCtx.fill();
+          tempCtx.stroke();
         }
       }
     }

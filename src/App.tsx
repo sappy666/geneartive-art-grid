@@ -798,7 +798,11 @@ export default function App() {
                       { id: 'points', label: 'Puntos', desc: 'Nodos flotantes puros' },
                       { id: 'text', label: 'Texto', desc: 'Patrón tipográfico' },
                       { id: 'ascii', label: 'Código ASCII', desc: 'Símbolos de consola y matriz' },
-                      { id: 'cad-people', label: 'Personas CAD', desc: 'Siluetas arquitectónicas en planta' }
+                      { id: 'cad-people', label: 'Personas CAD', desc: 'Siluetas arquitectónicas en planta' },
+                      { id: 'isometric-cubes', label: 'Cubos Isométricos', desc: 'Estructuras isométricas 3D de alta definición' },
+                      { id: 'concentric-rings', label: 'Anillos Concéntricos', desc: 'Círculos concéntricos que reaccionan al desplazamiento' },
+                      { id: 'cross-cross', label: 'Cruces de Precisión', desc: 'Coordenadas en cruz de estilo plano arquitectónico' },
+                      { id: 'triangles', label: 'Triángulos', desc: 'Malla geométrica triangulada (origami/baja resolución)' }
                     ].map((mode) => (
                       <button
                         key={mode.id}
