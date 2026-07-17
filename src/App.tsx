@@ -860,6 +860,57 @@ export default function App() {
                   </div>
                 )}
 
+                {/* Conditional ASCII Settings */}
+                {settings.renderMode === 'ascii' && (
+                  <div className="space-y-3.5 p-3.5 rounded-xl border border-dashed animate-fade-in bg-zinc-500/5 border-zinc-500/20">
+                    <div>
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500 block mb-1.5">
+                        Juego de Caracteres ASCII
+                      </span>
+                      <select
+                        value={settings.asciiCharacterSet || 'classic'}
+                        onChange={(e) => updateSetting('asciiCharacterSet', e.target.value as any)}
+                        className={`w-full text-xs font-mono px-3 py-2 rounded-lg border outline-none bg-transparent transition-all cursor-pointer ${
+                          settings.darkTheme 
+                            ? 'border-white/10 text-white bg-zinc-950 focus:border-white/20' 
+                            : 'border-neutral-200 text-neutral-800 bg-white focus:border-neutral-400 shadow-sm'
+                        }`}
+                      >
+                        <option value="classic">Clásico de Consola (Matrix)</option>
+                        <option value="sonya">Sonya Rapoport (Trazador de Plóter)</option>
+                        <option value="grayscale_dots">Puntillismo Shading (Halftone)</option>
+                        <option value="blocks">Bloques Retro (Digital Engraving)</option>
+                        <option value="math">Símbolos Matemáticos</option>
+                        <option value="binary">Volcado Binario (Hexadecimal)</option>
+                      </select>
+                      <p className="text-[9px] text-zinc-400 mt-1 font-mono leading-normal">
+                        {settings.asciiCharacterSet === 'sonya' && 'Inspirado en la obra "Shoe-Field" de Sonya Rapoport con densidades tipográficas acumuladas.'}
+                        {settings.asciiCharacterSet === 'grayscale_dots' && 'Trama de puntos de escala tonal variable que imita la serigrafía mecánica.'}
+                        {settings.asciiCharacterSet === 'blocks' && 'Utiliza caracteres de bloque de consola para esculpir relieves tridimensionales.'}
+                        {settings.asciiCharacterSet === 'math' && 'Notaciones científicas, integrales y variables que reaccionan a la deformación.'}
+                        {settings.asciiCharacterSet === 'binary' && 'Formato hexadecimal puro que emula código binario y registros de memoria.'}
+                        {(!settings.asciiCharacterSet || settings.asciiCharacterSet === 'classic') && 'Símbolos tipográficos de desarrollo y operaciones lógicas.'}
+                      </p>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between font-mono text-[9px] uppercase tracking-widest mb-1.5 text-zinc-500">
+                        <span>Tamaño de la Fuente</span>
+                        <span className={`font-bold ${settings.darkTheme ? 'text-zinc-300' : 'text-zinc-800'}`}>{settings.textSize || 10} px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="5"
+                        max="24"
+                        step="1"
+                        value={settings.textSize || 10}
+                        onChange={(e) => updateSetting('textSize', parseInt(e.target.value))}
+                        className="w-full h-1 rounded-lg appearance-none cursor-ew-resize bg-neutral-200 dark:bg-zinc-800 accent-neutral-900 dark:accent-white transition-all"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* Grid Density Rows & Columns */}
                 <div className="space-y-3.5">
                   <div>

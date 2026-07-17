@@ -544,6 +544,72 @@ export const DEFAULT_PRESETS: Preset[] = [
       colorInverted: false,
       includeSignature: true
     }
+  },
+  {
+    id: 'sonya_rapoport_preset',
+    name: 'Sonya Rapoport (Plóter)',
+    description: 'Inspirado en la histórica obra de arte computacional "Shoe-Field". Trama de datos de densidades tipográficas, números y símbolos acumulados.',
+    settings: {
+      cols: 32,
+      rows: 32,
+      strokeWidth: 1,
+      showPoints: false,
+      pointSize: 1,
+      showVerticalLines: false,
+      showHorizontalLines: false,
+      diagonalLines: 'none',
+      renderMode: 'ascii',
+      asciiCharacterSet: 'sonya',
+      customText: '',
+      textSize: 9,
+      distortionType: 'mixed',
+      amplitude: 35,
+      frequency: 0.15,
+      edgeFalloff: 0.75,
+      interactionMode: 'repel',
+      interactionRadius: 160,
+      interactionStrength: 1.5,
+      persistDisplacement: false,
+      elasticity: 0.08,
+      animate: true,
+      animationSpeed: 0.5,
+      paperTexture: true,
+      colorInverted: false,
+      includeSignature: true
+    }
+  },
+  {
+    id: 'halftone_raster_preset',
+    name: 'Grabado Puntillista',
+    description: 'Trama de puntos mecánicos de densidad variable que componen un grabado dithered interactivo.',
+    settings: {
+      cols: 38,
+      rows: 38,
+      strokeWidth: 1,
+      showPoints: false,
+      pointSize: 1,
+      showVerticalLines: false,
+      showHorizontalLines: false,
+      diagonalLines: 'none',
+      renderMode: 'ascii',
+      asciiCharacterSet: 'grayscale_dots',
+      customText: '',
+      textSize: 10,
+      distortionType: 'noise',
+      amplitude: 40,
+      frequency: 0.2,
+      edgeFalloff: 0.8,
+      interactionMode: 'vortex',
+      interactionRadius: 180,
+      interactionStrength: 1.4,
+      persistDisplacement: false,
+      elasticity: 0.08,
+      animate: true,
+      animationSpeed: 0.7,
+      paperTexture: true,
+      colorInverted: false,
+      includeSignature: true
+    }
   }
 ];
 

@@ -2,6 +2,91 @@ import React, { useRef, useEffect, useState, useImperativeHandle, forwardRef } f
 import { ArtSettings } from '../types';
 import { fbm } from '../utils/noise';
 
+const getAsciiChar = (c: number, r: number, dist: number, cols: number, rows: number, settings: ArtSettings) => {
+  const mode = settings.asciiCharacterSet || 'classic';
+  const intensity = Math.min(1, dist / 40);
+
+  if (mode === 'sonya') {
+    if (intensity < 0.12) {
+      const chars = ['.', '·', ',', ';', ' '];
+      return chars[(c * 3 + r * 5) % chars.length];
+    } else if (intensity < 0.35) {
+      const chars = ['?', '@', '=', '<', '>', '+', '-', ':', ' '];
+      return chars[(c + r) % chars.length];
+    } else if (intensity < 0.65) {
+      const alph = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+      const char = alph[(c + r) % alph.length];
+      return (c % 3 === 0) ? char + char : char;
+    } else {
+      const nums = ['9', '8', '7', '5', '4', '0', 'ee', '@@', '????'];
+      return nums[(c * 2 + r * 3) % nums.length];
+    }
+  }
+
+  if (mode === 'grayscale_dots') {
+    if (intensity < 0.15) {
+      return (c % 2 === 0) ? '·' : ' ';
+    } else if (intensity < 0.35) {
+      return '•';
+    } else if (intensity < 0.6) {
+      return '●';
+    } else if (intensity < 0.85) {
+      return '⬤';
+    } else {
+      return '⬤⬤';
+    }
+  }
+
+  if (mode === 'blocks') {
+    if (intensity < 0.12) {
+      return ' ';
+    } else if (intensity < 0.35) {
+      return '░';
+    } else if (intensity < 0.6) {
+      return '▒';
+    } else if (intensity < 0.85) {
+      return '▓';
+    } else {
+      return '█';
+    }
+  }
+
+  if (mode === 'math') {
+    const mathSymbols = ['∫', '√', 'π', '∞', '∑', '∂', '∆', 'θ', 'λ', 'Ω', 'φ', 'ψ', '±', '≠', '≈'];
+    const sym = mathSymbols[(c * 3 + r * 7) % mathSymbols.length];
+    if (intensity > 0.7) {
+      return (c % 2 === 0) ? '∫' : '∑';
+    } else if (intensity < 0.2) {
+      return '±';
+    }
+    return sym;
+  }
+
+  if (mode === 'binary') {
+    if (intensity < 0.15) {
+      return (c + r) % 2 === 0 ? '0' : ' ';
+    } else if (intensity < 0.5) {
+      return (c * r) % 2 === 0 ? '0' : '1';
+    } else {
+      const hex = ['0', '1', 'A', 'F', 'X', '7', 'F0', 'E4'];
+      return hex[(c + r * 3) % hex.length];
+    }
+  }
+
+  // default 'classic'
+  const asciiSymbols = ['0', '1', '[', ']', '{', '}', ';', '=>', '+', '-', '*', '/', '%', '#', '$', '@', '&', '!', '?', '<', '>', '~'];
+  const asciiWords = ['sap', 'err', 'grid', 'var', 'let', 'set', 'get', 'run', 'val', 'nil', 'map', 'vec', 'sin', 'cos', 'dx', 'dy'];
+  const index = (c * 7 + r * 13) % (asciiSymbols.length + asciiWords.length);
+  let char = index < asciiSymbols.length ? asciiSymbols[index] : asciiWords[index - asciiSymbols.length];
+
+  if (dist > 15 && (c + r) % 2 === 0) {
+    char = '1';
+  } else if (dist > 30) {
+    char = '0';
+  }
+  return char;
+};
+
 interface ArtCanvasProps {
   settings: ArtSettings;
   onClearDisplacement?: () => void;
@@ -642,9 +727,6 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
-        const asciiSymbols = ['0', '1', '[', ']', '{', '}', ';', '=>', '+', '-', '*', '/', '%', '#', '$', '@', '&', '!', '?', '<', '>', '~'];
-        const asciiWords = ['sap', 'err', 'grid', 'var', 'let', 'set', 'get', 'run', 'val', 'nil', 'map', 'vec', 'sin', 'cos', 'dx', 'dy'];
-
         for (let c = 0; c < cols; c++) {
           for (let r = 0; r < rows; r++) {
             const p = points[c][r];
@@ -652,19 +734,7 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
             const dy = p.y - p.y0;
             const dist = Math.sqrt(dx * dx + dy * dy);
             
-            const index = (c * 7 + r * 13) % (asciiSymbols.length + asciiWords.length);
-            let char = '';
-            if (index < asciiSymbols.length) {
-              char = asciiSymbols[index];
-            } else {
-              char = asciiWords[index - asciiSymbols.length];
-            }
-
-            if (dist > 15 && (c + r) % 2 === 0) {
-              char = '1';
-            } else if (dist > 30) {
-              char = '0';
-            }
+            const char = getAsciiChar(c, r, dist, cols, rows, settings);
 
             if (dist > 2) {
               ctx.save();
@@ -1137,9 +1207,6 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
       tempCtx.textAlign = 'center';
       tempCtx.textBaseline = 'middle';
 
-      const asciiSymbols = ['0', '1', '[', ']', '{', '}', ';', '=>', '+', '-', '*', '/', '%', '#', '$', '@', '&', '!', '?', '<', '>', '~'];
-      const asciiWords = ['sap', 'err', 'grid', 'var', 'let', 'set', 'get', 'run', 'val', 'nil', 'map', 'vec', 'sin', 'cos', 'dx', 'dy'];
-
       for (let c = 0; c < cols; c++) {
         for (let r = 0; r < rows; r++) {
           const pt = getP(c, r);
@@ -1148,19 +1215,7 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
           const dy = p.y - p.y0;
           const dist = Math.sqrt(dx * dx + dy * dy);
           
-          const index = (c * 7 + r * 13) % (asciiSymbols.length + asciiWords.length);
-          let char = '';
-          if (index < asciiSymbols.length) {
-            char = asciiSymbols[index];
-          } else {
-            char = asciiWords[index - asciiSymbols.length];
-          }
-
-          if (dist > 15 && (c + r) % 2 === 0) {
-            char = '1';
-          } else if (dist > 30) {
-            char = '0';
-          }
+          const char = getAsciiChar(c, r, dist, cols, rows, settings);
 
           if (dist > 2) {
             tempCtx.save();

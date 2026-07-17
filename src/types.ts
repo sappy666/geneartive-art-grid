@@ -18,6 +18,7 @@ export interface ArtSettings {
   renderMode: RenderMode;
   customText: string;
   textSize: number;
+  asciiCharacterSet?: 'classic' | 'sonya' | 'math' | 'grayscale_dots' | 'blocks' | 'binary';
   
   // Distortion Settings
   distortionType: DistortionType;
