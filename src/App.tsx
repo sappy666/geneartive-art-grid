@@ -25,7 +25,9 @@ import {
   SlidersHorizontal,
   ChevronDown,
   FileDown,
-  Pencil
+  Pencil,
+  Video,
+  FileJson
 } from 'lucide-react';
 import { ArtSettings, SavedConfig, SavedCreation, ExportResolution, InteractionMode, DistortionType } from './types';
 import { ArtCanvas, ArtCanvasRef } from './components/ArtCanvas';
@@ -56,6 +58,8 @@ export default function App() {
   const [exportRes, setExportRes] = useState<ExportResolution>('4x');
   const [exportAspect, setExportAspect] = useState<'1:1' | '4:5'>('1:1');
   const [isExporting, setIsExporting] = useState(false);
+  const [isRecordingVideo, setIsRecordingVideo] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   
   // Custom JSON sharing state
   const [showJsonShare, setShowJsonShare] = useState(false);
@@ -269,6 +273,125 @@ export default function App() {
         setIsExporting(false);
       }
     }, 400); // short timeout to let state update & UI react
+  };
+
+  // Grabar 5 segundos de video del Canvas
+  const handleRecordVideo = () => {
+    const canvas = canvasRef.current?.getCanvas();
+    if (!canvas) {
+      triggerToast('No se encontró el lienzo para grabar', 'error');
+      return;
+    }
+
+    try {
+      // Find supported mimeType
+      const types = [
+        'video/webm;codecs=vp9',
+        'video/webm;codecs=vp8',
+        'video/webm',
+        'video/mp4'
+      ];
+      let selectedType = '';
+      for (const t of types) {
+        if (MediaRecorder.isTypeSupported(t)) {
+          selectedType = t;
+          break;
+        }
+      }
+
+      if (!selectedType) {
+        triggerToast('Tu navegador no soporta grabación de video Canvas', 'error');
+        return;
+      }
+
+      setIsRecordingVideo(true);
+      setRecordingSeconds(5);
+      triggerToast('Grabando 5 segundos de video...', 'info');
+
+      const stream = canvas.captureStream(30); // 30 FPS
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: selectedType,
+        videoBitsPerSecond: 2500000 // 2.5 Mbps
+      });
+
+      const chunks: Blob[] = [];
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          chunks.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: selectedType });
+        const url = URL.createObjectURL(blob);
+        const ext = selectedType.includes('mp4') ? 'mp4' : 'webm';
+        
+        const counterStr = localStorage.getItem('sappy_error_export_counter') || '1';
+        const counterVal = parseInt(counterStr) || 1;
+        localStorage.setItem('sappy_error_export_counter', (counterVal + 1).toString());
+        const paddedNum = String(counterVal).padStart(2, '0');
+        const fileName = `sappy.error.${paddedNum}.${ext}`;
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        setIsRecordingVideo(false);
+        triggerToast(`¡Video ${fileName} descargado con éxito!`, 'success');
+      };
+
+      // Start recording
+      mediaRecorder.start();
+
+      // Countdown interval
+      let count = 5;
+      const interval = setInterval(() => {
+        count--;
+        setRecordingSeconds(count);
+        if (count <= 0) {
+          clearInterval(interval);
+          try {
+            mediaRecorder.stop();
+          } catch (e) {
+            console.error('Error stopping recorder:', e);
+          }
+        }
+      }, 1000);
+
+    } catch (err) {
+      console.error('Error starting video recording:', err);
+      triggerToast('Error al iniciar la grabación de video', 'error');
+      setIsRecordingVideo(false);
+    }
+  };
+
+  // Descargar configuración actual como archivo JSON directo
+  const handleDownloadJson = () => {
+    try {
+      const jsonStr = JSON.stringify(settings, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      const counterStr = localStorage.getItem('sappy_error_export_counter') || '1';
+      const counterVal = parseInt(counterStr) || 1;
+      localStorage.setItem('sappy_error_export_counter', (counterVal + 1).toString());
+      const paddedNum = String(counterVal).padStart(2, '0');
+      const fileName = `sappy.error.${paddedNum}.json`;
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      triggerToast(`¡Ajustes descargados como ${fileName}!`, 'success');
+    } catch (err) {
+      console.error(err);
+      triggerToast('Error al exportar configuración JSON', 'error');
+    }
   };
 
   // Record/Grab the current creation with snapshot & restore capability
@@ -521,23 +644,6 @@ export default function App() {
               settings={settings} 
               aspectRatio={exportAspect}
             />
-
-            {/* Canvas Footer Tips */}
-            <div className={`px-4.5 py-3 rounded-xl border transition-colors duration-300 flex items-start gap-3.5 ${
-              settings.darkTheme ? 'border-white/5 bg-white/[0.01]' : 'border-neutral-200/50 bg-neutral-900/[0.01]'
-            }`}>
-              <Info className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${settings.darkTheme ? 'text-zinc-500' : 'text-neutral-400'}`} />
-              <div className="space-y-0.5">
-                <p className={`font-sans text-xs leading-relaxed ${settings.darkTheme ? 'text-zinc-400' : 'text-neutral-600'}`}>
-                  {settings.persistDisplacement 
-                    ? 'Modo Arcilla activo: Arrastra el cursor por el lienzo para esculpir pliegues y deformaciones permanentes.'
-                    : 'Pasa o arrastra el cursor para deformar elásticos pliegues. Regresa a su forma original al soltarlo.'}
-                </p>
-                <p className="font-mono text-[8px] text-zinc-500 uppercase tracking-widest">
-                  Atajo: Usa el botón 'Limpiar' para borrar el moldeado.
-                </p>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -654,6 +760,7 @@ export default function App() {
                       { id: 'lines', label: 'Líneas', desc: 'Cuadrícula tradicional' },
                       { id: 'points', label: 'Puntos', desc: 'Nodos flotantes puros' },
                       { id: 'text', label: 'Texto', desc: 'Patrón tipográfico' },
+                      { id: 'ascii', label: 'Código ASCII', desc: 'Símbolos de consola y matriz' },
                       { id: 'cad-people', label: 'Personas CAD', desc: 'Siluetas arquitectónicas en planta' }
                     ].map((mode) => (
                       <button
@@ -686,7 +793,7 @@ export default function App() {
                       </div>
                       <input
                         type="text"
-                        maxLength={25}
+                        maxLength={500}
                         value={settings.customText || ''}
                         onChange={(e) => updateSetting('customText', e.target.value)}
                         placeholder="Escribe tu texto..."
@@ -1677,6 +1784,45 @@ export default function App() {
                   )}
                   <span>{isExporting ? 'Procesando Render...' : 'Exportar en Alta Calidad'}</span>
                 </button>
+
+                {/* Alternativas de exportación: Video & JSON */}
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <button
+                    onClick={handleRecordVideo}
+                    disabled={isRecordingVideo}
+                    className={`py-2.5 px-3 rounded-xl flex items-center justify-center font-mono text-[9px] uppercase tracking-widest font-bold gap-1.5 transition-all shadow border cursor-pointer ${
+                      settings.darkTheme
+                        ? 'bg-zinc-900 border-white/5 text-zinc-300 hover:text-white hover:bg-zinc-800/80 disabled:opacity-40'
+                        : 'bg-white border-neutral-200 text-neutral-700 hover:text-neutral-900 hover:bg-neutral-50 disabled:opacity-55'
+                    }`}
+                    title="Graba 5 segundos de animación de tu lienzo como archivo de video"
+                  >
+                    {isRecordingVideo ? (
+                      <span className="flex items-center gap-1 text-rose-500 animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-rose-500 inline-block mr-0.5" />
+                        <span>Rec {recordingSeconds}s</span>
+                      </span>
+                    ) : (
+                      <>
+                        <Video className="w-3.5 h-3.5 text-rose-500/80" />
+                        <span>Guardar Video</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={handleDownloadJson}
+                    className={`py-2.5 px-3 rounded-xl flex items-center justify-center font-mono text-[9px] uppercase tracking-widest font-bold gap-1.5 transition-all shadow border cursor-pointer ${
+                      settings.darkTheme
+                        ? 'bg-zinc-900 border-white/5 text-zinc-300 hover:text-white hover:bg-zinc-800/80'
+                        : 'bg-white border-neutral-200 text-neutral-700 hover:text-neutral-900 hover:bg-neutral-50'
+                    }`}
+                    title="Descarga la configuración técnica actual como archivo JSON"
+                  >
+                    <FileJson className="w-3.5 h-3.5 text-indigo-500/80" />
+                    <span>Exportar JSON</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1753,11 +1899,24 @@ export default function App() {
       )}
 
       {/* Subtle Bottom Footer */}
-      <footer className={`px-6 py-3.5 border-t text-center font-mono text-[8px] uppercase tracking-widest transition-all ${
+      <footer className={`px-6 py-4 border-t text-center font-mono text-[9px] uppercase tracking-widest transition-all ${
         settings.darkTheme ? 'border-white/5 bg-[#0A0A0A] text-zinc-500' : 'border-neutral-200/50 bg-neutral-50/20 text-neutral-400'
       }`}>
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <span>Soporte Multi-táctil Completo · Diseñado para Escritorio y Móvil</span>
+          <div className="flex items-center justify-center gap-1">
+            <span>Creador:</span>
+            <a 
+              href="https://www.instagram.com/sappy.error" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className={`font-bold transition-all hover:underline ${
+                settings.darkTheme ? 'text-zinc-300 hover:text-white' : 'text-neutral-800 hover:text-black'
+              }`}
+            >
+              @sappy.error
+            </a>
+          </div>
           <span>© {new Date().getFullYear()} Generative Grid Art</span>
         </div>
       </footer>

@@ -42,6 +42,9 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
     },
     resetGrid: () => {
       initializeGrid(dimensions.width, dimensions.height);
+    },
+    getCanvas: () => {
+      return canvasRef.current;
     }
   }));
 
@@ -476,6 +479,49 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
             ctx.fillText(char, points[c][r].x, points[c][r].y);
           }
         }
+      } else if (settings.renderMode === 'ascii') {
+        // High-tech ASCII code/matrix rendering
+        ctx.fillStyle = strokeColor;
+        const fSize = settings.textSize || 10;
+        ctx.font = `500 ${fSize}px "JetBrains Mono", monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const asciiSymbols = ['0', '1', '[', ']', '{', '}', ';', '=>', '+', '-', '*', '/', '%', '#', '$', '@', '&', '!', '?', '<', '>', '~'];
+        const asciiWords = ['sap', 'err', 'grid', 'var', 'let', 'set', 'get', 'run', 'val', 'nil', 'map', 'vec', 'sin', 'cos', 'dx', 'dy'];
+
+        for (let c = 0; c < cols; c++) {
+          for (let r = 0; r < rows; r++) {
+            const p = points[c][r];
+            const dx = p.x - p.x0;
+            const dy = p.y - p.y0;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            const index = (c * 7 + r * 13) % (asciiSymbols.length + asciiWords.length);
+            let char = '';
+            if (index < asciiSymbols.length) {
+              char = asciiSymbols[index];
+            } else {
+              char = asciiWords[index - asciiSymbols.length];
+            }
+
+            if (dist > 15 && (c + r) % 2 === 0) {
+              char = '1';
+            } else if (dist > 30) {
+              char = '0';
+            }
+
+            if (dist > 2) {
+              ctx.save();
+              ctx.translate(p.x, p.y);
+              ctx.rotate(Math.atan2(dy, dx));
+              ctx.fillText(char, 0, 0);
+              ctx.restore();
+            } else {
+              ctx.fillText(char, p.x, p.y);
+            }
+          }
+        }
       } else if (settings.renderMode === 'cad-people') {
         // Vector AutoCAD-style plan architectural human figures
         for (let c = 0; c < cols; c++) {
@@ -806,6 +852,49 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
           tempCtx.fillText(char, pt.x, pt.y);
         }
       }
+    } else if (settings.renderMode === 'ascii') {
+      tempCtx.fillStyle = strokeColor;
+      const fSize = (settings.textSize || 10) * multiplier;
+      tempCtx.font = `500 ${fSize}px "JetBrains Mono", monospace`;
+      tempCtx.textAlign = 'center';
+      tempCtx.textBaseline = 'middle';
+
+      const asciiSymbols = ['0', '1', '[', ']', '{', '}', ';', '=>', '+', '-', '*', '/', '%', '#', '$', '@', '&', '!', '?', '<', '>', '~'];
+      const asciiWords = ['sap', 'err', 'grid', 'var', 'let', 'set', 'get', 'run', 'val', 'nil', 'map', 'vec', 'sin', 'cos', 'dx', 'dy'];
+
+      for (let c = 0; c < cols; c++) {
+        for (let r = 0; r < rows; r++) {
+          const pt = getP(c, r);
+          const p = points[c][r];
+          const dx = p.x - p.x0;
+          const dy = p.y - p.y0;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          
+          const index = (c * 7 + r * 13) % (asciiSymbols.length + asciiWords.length);
+          let char = '';
+          if (index < asciiSymbols.length) {
+            char = asciiSymbols[index];
+          } else {
+            char = asciiWords[index - asciiSymbols.length];
+          }
+
+          if (dist > 15 && (c + r) % 2 === 0) {
+            char = '1';
+          } else if (dist > 30) {
+            char = '0';
+          }
+
+          if (dist > 2) {
+            tempCtx.save();
+            tempCtx.translate(pt.x, pt.y);
+            tempCtx.rotate(Math.atan2(dy, dx));
+            tempCtx.fillText(char, 0, 0);
+            tempCtx.restore();
+          } else {
+            tempCtx.fillText(char, pt.x, pt.y);
+          }
+        }
+      }
     } else if (settings.renderMode === 'cad-people') {
       // High-resolution CAD plan people
       for (let c = 0; c < cols; c++) {
@@ -913,13 +1002,6 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
           onTouchEnd={handleMouseUpOrLeave}
           className="absolute inset-0 cursor-crosshair touch-none select-none block"
         />
-        
-        {/* Subtle decorative guide label */}
-        <div className={`absolute bottom-4 left-4 font-mono text-[10px] tracking-widest pointer-events-none select-none transition-opacity duration-300 ${
-          settings.darkTheme ? 'text-white/20' : 'text-neutral-400'
-        }`}>
-          CLICK & DRAG
-        </div>
       </div>
     </div>
   );
