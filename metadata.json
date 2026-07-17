@@ -1,0 +1,6 @@
+{
+  "name": "Generative Grid Art",
+  "description": "Una aplicación minimalista y limpia para diseñar, interactuar y exportar arte generativo de cuadrículas deformables en blanco y negro.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
