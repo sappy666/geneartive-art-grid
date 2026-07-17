@@ -36,6 +36,7 @@ export interface ArtSettings {
   // Dynamic Settings
   animate: boolean;
   animationSpeed: number;
+  autoMoveMode?: 'none' | 'dvd' | 'spiral' | 'random' | 'sweep' | 'wave';
   
   // Aesthetic Styles
   darkTheme: boolean;

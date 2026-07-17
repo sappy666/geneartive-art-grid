@@ -936,6 +936,21 @@ export default function App() {
                           <option value="emoji_esoteric_magic">Esotérico y Astral (🔮, 🧿, 🕯️, 🪐, 🌙, ✨)</option>
                           <option value="emoji_brutalist_industrial">Industrial Brutalista (⛓️, ⚙️, 🛠️, 🚦, ⚠️, 🚧)</option>
                         </optgroup>
+                        <optgroup label="Emojis Individuales (Medieval & Fantasía)">
+                          <option value="🏰">Castillo (🏰)</option>
+                          <option value="🗡️">Daga (🗡️)</option>
+                          <option value="🛡️">Escudo (🛡️)</option>
+                          <option value="👑">Corona (👑)</option>
+                          <option value="🏹">Arco y Flecha (🏹)</option>
+                          <option value="🐉">Dragón (🐉)</option>
+                          <option value="🗝️">Llave antigua (🗝️)</option>
+                          <option value="🔮">Bola de Cristal (🔮)</option>
+                          <option value="🕯️">Vela encendida (🕯️)</option>
+                          <option value="🥀">Rosa marchita (🥀)</option>
+                          <option value="🩸">Gota de sangre (🩸)</option>
+                          <option value="🪐">Saturno (🪐)</option>
+                          <option value="🦋">Mariposa (🦋)</option>
+                        </optgroup>
                         <optgroup label="Estructuras Geométricas y Editorial">
                           <option value="mix_geometry_abstract">Geometría Abstracta (▲, ▼, ◀, ▶, ◆, ◇, ●, ○)</option>
                           <option value="mix_editorial_brackets">Llaves y Corchetes Suizos (〔, 〕, 《, 》, 【, 】)</option>
@@ -1393,6 +1408,38 @@ export default function App() {
                         {mode.label}
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500 block font-semibold">
+                    Piloto Automático (Auto-Movimiento)
+                  </span>
+                  <div className={`p-3 rounded-xl border ${settings.darkTheme ? 'bg-white/[0.02] border-white/5' : 'bg-neutral-50/50 border-neutral-200/80'}`}>
+                    <select
+                      value={settings.autoMoveMode || 'none'}
+                      onChange={(e) => updateSetting('autoMoveMode', e.target.value as any)}
+                      className={`w-full text-xs font-mono rounded-lg p-2 transition-all ${
+                        settings.darkTheme
+                          ? 'bg-zinc-900 border-zinc-800 text-zinc-200 focus:border-zinc-700'
+                          : 'border-neutral-200 text-neutral-800 bg-white focus:border-neutral-400 shadow-sm'
+                      }`}
+                    >
+                      <option value="none">Desactivado (Movimiento manual)</option>
+                      <option value="dvd">Rebote de Pantalla (Estilo Screensaver DVD)</option>
+                      <option value="spiral">Órbita Espiral (Atracción y Giro gravitatorio)</option>
+                      <option value="random">Fantasmal Errante (Wanderer caótico)</option>
+                      <option value="sweep">Barrido Editorial (Limpieza bidireccional)</option>
+                      <option value="wave">Serpenteo de Ondas (Senoide sinusoidal)</option>
+                    </select>
+                    <p className={`text-[10px] mt-1.5 leading-relaxed ${settings.darkTheme ? 'text-zinc-400' : 'text-neutral-500'}`}>
+                      {settings.autoMoveMode === 'dvd' && "El cursor simulado rebota perpetuamente en los bordes como un logo flotante."}
+                      {settings.autoMoveMode === 'spiral' && "Un recorrido orbital hipnótico de radios y velocidades oscilantes."}
+                      {settings.autoMoveMode === 'random' && "Un viaje aleatorio fluido y orgánico simulando un espectro errante."}
+                      {settings.autoMoveMode === 'sweep' && "Movimiento de escaneo que barre de un lado a otro creando simetrías rítmicas."}
+                      {settings.autoMoveMode === 'wave' && "Traza curvas de serpiente S cruzando y deformando el tejido."}
+                      {(!settings.autoMoveMode || settings.autoMoveMode === 'none') && "El cursor solo se moverá cuando arrastres o pases el ratón/dedo."}
+                    </p>
                   </div>
                 </div>
 

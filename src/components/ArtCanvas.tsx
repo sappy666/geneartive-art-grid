@@ -439,8 +439,9 @@ const getCrossStitchSymbolChar = (symbol: string, c: number, r: number) => {
       return symbols[(c * 7 + r * 13) % symbols.length];
     }
     case 'x':
+      return '✕';
     default:
-      return symbol.length === 1 ? symbol : '✕';
+      return symbol;
   }
 };
 
@@ -476,6 +477,8 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
   const mousePosRef = useRef({ x: 0, y: 0 });
   const timeRef = useRef(0);
   const animationFrameIdRef = useRef<number | null>(null);
+  const autoMovePosRef = useRef({ x: 300, y: 300 });
+  const autoMoveVelRef = useRef({ dx: 2.5, dy: 1.8 });
 
   // Expose methods to parent
   useImperativeHandle(ref, () => ({
@@ -637,6 +640,52 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
         initializeGrid(dimensions.width, dimensions.height);
         animationFrameIdRef.current = requestAnimationFrame(render);
         return;
+      }
+
+      // Update autoMove if applicable and user is not active
+      if (settings.autoMoveMode && settings.autoMoveMode !== 'none' && !isDraggingRef.current) {
+        const w = dimensions.width;
+        const h = dimensions.height;
+        let nx = mousePosRef.current.x;
+        let ny = mousePosRef.current.y;
+        const t = timeRef.current;
+        const speedMultiplier = settings.animationSpeed || 1;
+
+        if (settings.autoMoveMode === 'dvd') {
+          let { x, y } = autoMovePosRef.current;
+          let { dx, dy } = autoMoveVelRef.current;
+          
+          x += dx * speedMultiplier * 1.5;
+          y += dy * speedMultiplier * 1.5;
+          
+          if (x < 10) { x = 10; dx = Math.abs(dx); }
+          if (x > w - 10) { x = w - 10; dx = -Math.abs(dx); }
+          if (y < 10) { y = 10; dy = Math.abs(dy); }
+          if (y > h - 10) { y = h - 10; dy = -Math.abs(dy); }
+          
+          autoMovePosRef.current = { x, y };
+          autoMoveVelRef.current = { dx, dy };
+          nx = x;
+          ny = y;
+        } else if (settings.autoMoveMode === 'spiral') {
+          const cx = w / 2;
+          const cy = h / 2;
+          const r = (Math.min(w, h) * 0.38) * (0.6 + 0.4 * Math.sin(t * 0.3));
+          nx = cx + Math.cos(t * 1.2) * r;
+          ny = cy + Math.sin(t * 1.2) * r;
+        } else if (settings.autoMoveMode === 'random') {
+          nx = (0.5 + 0.43 * Math.sin(t * 0.7) * Math.cos(t * 0.35)) * w;
+          ny = (0.5 + 0.43 * Math.cos(t * 0.55) * Math.sin(t * 0.4)) * h;
+        } else if (settings.autoMoveMode === 'sweep') {
+          nx = (0.5 + 0.45 * Math.sin(t * 1.1)) * w;
+          ny = (0.5 + 0.4 * Math.cos(t * 0.15)) * h;
+        } else if (settings.autoMoveMode === 'wave') {
+          nx = ((t * 80) % (w + 160)) - 80;
+          ny = h / 2 + Math.sin(nx * 0.012 + t) * (h * 0.35);
+        }
+
+        lastMousePosRef.current = { ...mousePosRef.current };
+        mousePosRef.current = { x: nx, y: ny };
       }
 
       const mouseX = mousePosRef.current.x;
@@ -1386,6 +1435,21 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
             ctx.stroke();
           }
         }
+      }
+
+      if (settings.autoMoveMode && settings.autoMoveMode !== 'none' && !isDraggingRef.current) {
+        // Draw a tiny radar-pulsing ring for the autoMove cursor
+        const pulse = 1 + 0.3 * Math.sin(timeRef.current * 4);
+        ctx.strokeStyle = accent1 || strokeColor;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(mouseX, mouseY, 8 * pulse, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        ctx.fillStyle = accent1 || strokeColor;
+        ctx.beginPath();
+        ctx.arc(mouseX, mouseY, 2.5, 0, Math.PI * 2);
+        ctx.fill();
       }
 
       if (settings.includeSignature) {
