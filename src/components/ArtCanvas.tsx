@@ -52,27 +52,44 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const resizeObserver = new ResizeObserver((entries) => {
-      if (!entries || entries.length === 0) return;
-      const { width } = entries[0].contentRect;
+    const updateDimensions = () => {
+      if (!containerRef.current) return;
+      const width = containerRef.current.clientWidth || 400;
       
-      // Keep canvas square or bounded nicely based on selected aspect ratio
-      const size = Math.max(280, Math.min(width, 800));
-      const h = aspectRatio === '4:5' ? size * 1.25 : size;
-      setDimensions({ width: size, height: h });
+      // Calculate available vertical space safely to ensure the whole art fits
+      // Header is ~64px, action bar is ~44px, padding/margins is ~80px.
+      // So available height is roughly window.innerHeight - 188px.
+      const availableHeight = window.innerHeight - 188;
+      const maxH = Math.max(280, availableHeight);
+      
+      let size = Math.max(280, Math.min(width, 800));
+      let h = aspectRatio === '4:5' ? size * 1.25 : size;
+      
+      // If height would exceed the available vertical space, scale both proportionally
+      if (h > maxH) {
+        h = maxH;
+        size = aspectRatio === '4:5' ? h / 1.25 : h;
+      }
+      
+      setDimensions({ width: Math.round(size), height: Math.round(h) });
+    };
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateDimensions();
     });
 
     resizeObserver.observe(containerRef.current);
-    return () => resizeObserver.disconnect();
-  }, [aspectRatio]);
+    
+    // Also attach a direct window resize listener to catch window resize instantly
+    window.addEventListener('resize', updateDimensions);
+    
+    // Run once immediately
+    updateDimensions();
 
-  // Adjust immediately when aspectRatio prop changes
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const width = containerRef.current.clientWidth;
-    const size = Math.max(280, Math.min(width, 800));
-    const h = aspectRatio === '4:5' ? size * 1.25 : size;
-    setDimensions({ width: size, height: h });
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateDimensions);
+    };
   }, [aspectRatio]);
 
   // Initialize or re-create grid when dimensions or structural settings change
@@ -414,9 +431,69 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
       ctx.lineJoin = 'round';
 
       if (settings.renderMode === 'lines') {
-        // Horizontal lines
-        if (settings.showHorizontalLines) {
+        // Special 3D shading for Escher stairs
+        if (settings.distortionType === 'escher_stairs') {
+          for (let c = 0; c < cols - 1; c++) {
+            for (let r = 0; r < rows - 1; r++) {
+              const pTL = points[c][r];
+              const pTR = points[c + 1][r];
+              const pBL = points[c][r + 1];
+              const pBR = points[c + 1][r + 1];
+
+              // Alternate shading of triangular isometric facets to resemble stairs steps
+              if ((c + r) % 2 === 0) {
+                ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)';
+                ctx.beginPath();
+                ctx.moveTo(pTL.x, pTL.y);
+                ctx.lineTo(pTR.x, pTR.y);
+                ctx.lineTo(pBL.x, pBL.y);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.09)';
+                ctx.beginPath();
+                ctx.moveTo(pTR.x, pTR.y);
+                ctx.lineTo(pBR.x, pBR.y);
+                ctx.lineTo(pBL.x, pBL.y);
+                ctx.closePath();
+                ctx.fill();
+              } else {
+                ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.015)';
+                ctx.beginPath();
+                ctx.moveTo(pTL.x, pTL.y);
+                ctx.lineTo(pTR.x, pTR.y);
+                ctx.lineTo(pBR.x, pBR.y);
+                ctx.closePath();
+                ctx.fill();
+              }
+            }
+          }
+        }
+
+        // Special silhouette layering for Growing Mountains
+        if (settings.distortionType === 'growing_mountains') {
           for (let r = 0; r < rows; r++) {
+            ctx.beginPath();
+            ctx.moveTo(points[0][r].x, points[0][r].y);
+            for (let c = 1; c < cols; c++) {
+              ctx.lineTo(points[c][r].x, points[c][r].y);
+            }
+            // Close the polygon down to the bottom of the canvas
+            ctx.lineTo(points[cols - 1][r].x, dimensions.height);
+            ctx.lineTo(points[0][r].x, dimensions.height);
+            ctx.closePath();
+
+            const ratio = r / rows;
+            ctx.fillStyle = isDark 
+              ? `rgba(20, 22, 28, ${0.12 + ratio * 0.78})` 
+              : `rgba(238, 235, 228, ${0.12 + ratio * 0.7})`;
+            ctx.fill();
+            
+            // Highlight the ridge line with a solid stroke
+            ctx.lineWidth = settings.strokeWidth * 1.5;
+            ctx.strokeStyle = isDark 
+              ? `rgba(255, 255, 255, ${0.15 + ratio * 0.5})` 
+              : `rgba(18, 18, 18, ${0.15 + ratio * 0.55})`;
             ctx.beginPath();
             ctx.moveTo(points[0][r].x, points[0][r].y);
             for (let c = 1; c < cols; c++) {
@@ -426,39 +503,97 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
           }
         }
 
-        // Vertical lines
-        if (settings.showVerticalLines) {
-          for (let c = 0; c < cols; c++) {
+        // Special marble fluid layers
+        if (settings.distortionType === 'composition_marble') {
+          for (let r = 0; r < rows - 1; r += 2) {
             ctx.beginPath();
-            ctx.moveTo(points[c][0].x, points[c][0].y);
-            for (let r = 1; r < rows; r++) {
+            ctx.moveTo(points[0][r].x, points[0][r].y);
+            for (let c = 1; c < cols; c++) {
               ctx.lineTo(points[c][r].x, points[c][r].y);
             }
-            ctx.stroke();
+            // Loop back on the next row to form a flowing ribbon
+            for (let c = cols - 1; c >= 0; c--) {
+              ctx.lineTo(points[c][r + 1].x, points[c][r + 1].y);
+            }
+            ctx.closePath();
+            
+            // Fill alternate swirly channels
+            ctx.fillStyle = isDark 
+              ? 'rgba(255, 255, 255, 0.08)' 
+              : 'rgba(0, 0, 0, 0.07)';
+            ctx.fill();
           }
         }
 
-        // Diagonal lines (triangular mesh looks beautiful)
-        if (settings.diagonalLines !== 'none') {
-          ctx.beginPath();
-          for (let c = 0; c < cols - 1; c++) {
-            for (let r = 0; r < rows - 1; r++) {
-              const pTL = points[c][r];
-              const pTR = points[c + 1][r];
-              const pBL = points[c][r + 1];
-              const pBR = points[c + 1][r + 1];
-
-              if (settings.diagonalLines === 'left' || settings.diagonalLines === 'both') {
-                ctx.moveTo(pTL.x, pTL.y);
-                ctx.lineTo(pBR.x, pBR.y);
-              }
-              if (settings.diagonalLines === 'right' || settings.diagonalLines === 'both') {
-                ctx.moveTo(pTR.x, pTR.y);
-                ctx.lineTo(pBL.x, pBL.y);
-              }
+        // Special renderer for cross stitch Xs
+        if (settings.distortionType === 'cross_stitch') {
+          const stitchSize = Math.max(3, settings.strokeWidth * 1.8 + 1.2);
+          ctx.lineWidth = settings.strokeWidth * 1.25;
+          ctx.strokeStyle = strokeColor;
+          
+          for (let c = 0; c < cols; c++) {
+            for (let r = 0; r < rows; r++) {
+              const p = points[c][r];
+              ctx.beginPath();
+              ctx.moveTo(p.x - stitchSize, p.y - stitchSize);
+              ctx.lineTo(p.x + stitchSize, p.y + stitchSize);
+              ctx.moveTo(p.x + stitchSize, p.y - stitchSize);
+              ctx.lineTo(p.x - stitchSize, p.y + stitchSize);
+              ctx.stroke();
             }
           }
-          ctx.stroke();
+        }
+
+        // Standard lines (only if they aren't mountains/cross stitch which have native line renderers)
+        const isCustomLineDrawing = settings.distortionType === 'growing_mountains' || settings.distortionType === 'cross_stitch';
+        
+        if (!isCustomLineDrawing) {
+          // Horizontal lines
+          if (settings.showHorizontalLines) {
+            for (let r = 0; r < rows; r++) {
+              ctx.beginPath();
+              ctx.moveTo(points[0][r].x, points[0][r].y);
+              for (let c = 1; c < cols; c++) {
+                ctx.lineTo(points[c][r].x, points[c][r].y);
+              }
+              ctx.stroke();
+            }
+          }
+
+          // Vertical lines
+          if (settings.showVerticalLines) {
+            for (let c = 0; c < cols; c++) {
+              ctx.beginPath();
+              ctx.moveTo(points[c][0].x, points[c][0].y);
+              for (let r = 1; r < rows; r++) {
+                ctx.lineTo(points[c][r].x, points[c][r].y);
+              }
+              ctx.stroke();
+            }
+          }
+
+          // Diagonal lines (triangular mesh looks beautiful)
+          if (settings.diagonalLines !== 'none') {
+            ctx.beginPath();
+            for (let c = 0; c < cols - 1; c++) {
+              for (let r = 0; r < rows - 1; r++) {
+                const pTL = points[c][r];
+                const pTR = points[c + 1][r];
+                const pBL = points[c][r + 1];
+                const pBR = points[c + 1][r + 1];
+
+                if (settings.diagonalLines === 'left' || settings.diagonalLines === 'both') {
+                  ctx.moveTo(pTL.x, pTL.y);
+                  ctx.lineTo(pBR.x, pBR.y);
+                }
+                if (settings.diagonalLines === 'right' || settings.diagonalLines === 'both') {
+                  ctx.moveTo(pTR.x, pTR.y);
+                  ctx.lineTo(pBL.x, pBL.y);
+                }
+              }
+            }
+            ctx.stroke();
+          }
         }
 
         // Draw connection intersections as points/nodes
@@ -782,12 +917,73 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
     };
 
     if (settings.renderMode === 'lines') {
-      // Horizontal
-      if (settings.showHorizontalLines) {
+      // Special 3D shading for Escher stairs
+      if (settings.distortionType === 'escher_stairs') {
+        for (let c = 0; c < cols - 1; c++) {
+          for (let r = 0; r < rows - 1; r++) {
+            const pTL = getP(c, r);
+            const pTR = getP(c + 1, r);
+            const pBL = getP(c, r + 1);
+            const pBR = getP(c + 1, r + 1);
+
+            // Alternate shading of triangular isometric facets to resemble stairs steps
+            if ((c + r) % 2 === 0) {
+              tempCtx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)';
+              tempCtx.beginPath();
+              tempCtx.moveTo(pTL.x, pTL.y);
+              tempCtx.lineTo(pTR.x, pTR.y);
+              tempCtx.lineTo(pBL.x, pBL.y);
+              tempCtx.closePath();
+              tempCtx.fill();
+
+              tempCtx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.09)';
+              tempCtx.beginPath();
+              tempCtx.moveTo(pTR.x, pTR.y);
+              tempCtx.lineTo(pBR.x, pBR.y);
+              tempCtx.lineTo(pBL.x, pBL.y);
+              tempCtx.closePath();
+              tempCtx.fill();
+            } else {
+              tempCtx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.015)';
+              tempCtx.beginPath();
+              tempCtx.moveTo(pTL.x, pTL.y);
+              tempCtx.lineTo(pTR.x, pTR.y);
+              tempCtx.lineTo(pBR.x, pBR.y);
+              tempCtx.closePath();
+              tempCtx.fill();
+            }
+          }
+        }
+      }
+
+      // Special silhouette layering for Growing Mountains
+      if (settings.distortionType === 'growing_mountains') {
         for (let r = 0; r < rows; r++) {
           tempCtx.beginPath();
-          const start = getP(0, r);
-          tempCtx.moveTo(start.x, start.y);
+          const pStart = getP(0, r);
+          tempCtx.moveTo(pStart.x, pStart.y);
+          for (let c = 1; c < cols; c++) {
+            const pt = getP(c, r);
+            tempCtx.lineTo(pt.x, pt.y);
+          }
+          // Close the polygon down to the bottom of the canvas
+          tempCtx.lineTo(targetW, targetH);
+          tempCtx.lineTo(0, targetH);
+          tempCtx.closePath();
+
+          const ratio = r / rows;
+          tempCtx.fillStyle = isDark 
+            ? `rgba(20, 22, 28, ${0.12 + ratio * 0.78})` 
+            : `rgba(238, 235, 228, ${0.12 + ratio * 0.7})`;
+          tempCtx.fill();
+          
+          // Highlight the ridge line with a solid stroke
+          tempCtx.lineWidth = settings.strokeWidth * multiplier * 1.5;
+          tempCtx.strokeStyle = isDark 
+            ? `rgba(255, 255, 255, ${0.15 + ratio * 0.5})` 
+            : `rgba(18, 18, 18, ${0.15 + ratio * 0.55})`;
+          tempCtx.beginPath();
+          tempCtx.moveTo(pStart.x, pStart.y);
           for (let c = 1; c < cols; c++) {
             const pt = getP(c, r);
             tempCtx.lineTo(pt.x, pt.y);
@@ -796,41 +992,103 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
         }
       }
 
-      // Vertical
-      if (settings.showVerticalLines) {
-        for (let c = 0; c < cols; c++) {
+      // Special marble fluid layers
+      if (settings.distortionType === 'composition_marble') {
+        for (let r = 0; r < rows - 1; r += 2) {
           tempCtx.beginPath();
-          const start = getP(c, 0);
-          tempCtx.moveTo(start.x, start.y);
-          for (let r = 1; r < rows; r++) {
+          const pStart = getP(0, r);
+          tempCtx.moveTo(pStart.x, pStart.y);
+          for (let c = 1; c < cols; c++) {
             const pt = getP(c, r);
             tempCtx.lineTo(pt.x, pt.y);
           }
-          tempCtx.stroke();
+          // Loop back on the next row to form a flowing ribbon
+          for (let c = cols - 1; c >= 0; c--) {
+            const pt = getP(c, r + 1);
+            tempCtx.lineTo(pt.x, pt.y);
+          }
+          tempCtx.closePath();
+          
+          // Fill alternate swirly channels
+          tempCtx.fillStyle = isDark 
+            ? 'rgba(255, 255, 255, 0.08)' 
+            : 'rgba(0, 0, 0, 0.07)';
+          tempCtx.fill();
         }
       }
 
-      // Diagonals
-      if (settings.diagonalLines !== 'none') {
-        tempCtx.beginPath();
-        for (let c = 0; c < cols - 1; c++) {
-          for (let r = 0; r < rows - 1; r++) {
-            const pTL = getP(c, r);
-            const pTR = getP(c + 1, r);
-            const pBL = getP(c, r + 1);
-            const pBR = getP(c + 1, r + 1);
-
-            if (settings.diagonalLines === 'left' || settings.diagonalLines === 'both') {
-              tempCtx.moveTo(pTL.x, pTL.y);
-              tempCtx.lineTo(pBR.x, pBR.y);
-            }
-            if (settings.diagonalLines === 'right' || settings.diagonalLines === 'both') {
-              tempCtx.moveTo(pTR.x, pTR.y);
-              tempCtx.lineTo(pBL.x, pBL.y);
-            }
+      // Special renderer for cross stitch Xs
+      if (settings.distortionType === 'cross_stitch') {
+        const stitchSize = Math.max(3, settings.strokeWidth * 1.8 + 1.2) * multiplier;
+        tempCtx.lineWidth = settings.strokeWidth * multiplier * 1.25;
+        tempCtx.strokeStyle = strokeColor;
+        
+        for (let c = 0; c < cols; c++) {
+          for (let r = 0; r < rows; r++) {
+            const p = getP(c, r);
+            tempCtx.beginPath();
+            tempCtx.moveTo(p.x - stitchSize, p.y - stitchSize);
+            tempCtx.lineTo(p.x + stitchSize, p.y + stitchSize);
+            tempCtx.moveTo(p.x + stitchSize, p.y - stitchSize);
+            tempCtx.lineTo(p.x - stitchSize, p.y + stitchSize);
+            tempCtx.stroke();
           }
         }
-        tempCtx.stroke();
+      }
+
+      const isCustomLineDrawing = settings.distortionType === 'growing_mountains' || settings.distortionType === 'cross_stitch';
+      
+      if (!isCustomLineDrawing) {
+        // Horizontal
+        if (settings.showHorizontalLines) {
+          for (let r = 0; r < rows; r++) {
+            tempCtx.beginPath();
+            const start = getP(0, r);
+            tempCtx.moveTo(start.x, start.y);
+            for (let c = 1; c < cols; c++) {
+              const pt = getP(c, r);
+              tempCtx.lineTo(pt.x, pt.y);
+            }
+            tempCtx.stroke();
+          }
+        }
+
+        // Vertical
+        if (settings.showVerticalLines) {
+          for (let c = 0; c < cols; c++) {
+            tempCtx.beginPath();
+            const start = getP(c, 0);
+            tempCtx.moveTo(start.x, start.y);
+            for (let r = 1; r < rows; r++) {
+              const pt = getP(c, r);
+              tempCtx.lineTo(pt.x, pt.y);
+            }
+            tempCtx.stroke();
+          }
+        }
+
+        // Diagonals
+        if (settings.diagonalLines !== 'none') {
+          tempCtx.beginPath();
+          for (let c = 0; c < cols - 1; c++) {
+            for (let r = 0; r < rows - 1; r++) {
+              const pTL = getP(c, r);
+              const pTR = getP(c + 1, r);
+              const pBL = getP(c, r + 1);
+              const pBR = getP(c + 1, r + 1);
+
+              if (settings.diagonalLines === 'left' || settings.diagonalLines === 'both') {
+                tempCtx.moveTo(pTL.x, pTL.y);
+                tempCtx.lineTo(pBR.x, pBR.y);
+              }
+              if (settings.diagonalLines === 'right' || settings.diagonalLines === 'both') {
+                tempCtx.moveTo(pTR.x, pTR.y);
+                tempCtx.lineTo(pBL.x, pBL.y);
+              }
+            }
+          }
+          tempCtx.stroke();
+        }
       }
 
       // Points
