@@ -60,6 +60,7 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [isRecordingVideo, setIsRecordingVideo] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [videoFormat, setVideoFormat] = useState<'mp4' | 'webm'>('mp4');
   
   // Custom JSON sharing state
   const [showJsonShare, setShowJsonShare] = useState(false);
@@ -284,19 +285,51 @@ export default function App() {
     }
 
     try {
-      // Find supported mimeType
-      const types = [
-        'video/webm;codecs=vp9',
-        'video/webm;codecs=vp8',
-        'video/webm',
-        'video/mp4'
-      ];
+      // Find supported mimeType based on selected format
       let selectedType = '';
-      for (const t of types) {
-        if (MediaRecorder.isTypeSupported(t)) {
-          selectedType = t;
-          break;
+      if (videoFormat === 'mp4') {
+        const mp4Types = [
+          'video/mp4;codecs=h264',
+          'video/mp4;codecs=avc1',
+          'video/mp4'
+        ];
+        for (const t of mp4Types) {
+          if (MediaRecorder.isTypeSupported(t)) {
+            selectedType = t;
+            break;
+          }
         }
+      } else {
+        const webmTypes = [
+          'video/webm;codecs=vp9',
+          'video/webm;codecs=vp8',
+          'video/webm'
+        ];
+        for (const t of webmTypes) {
+          if (MediaRecorder.isTypeSupported(t)) {
+            selectedType = t;
+            break;
+          }
+        }
+      }
+
+      let fallbackUsed = false;
+      if (!selectedType) {
+        // Fallback to any supported type
+        const fallbackTypes = [
+          'video/mp4;codecs=h264',
+          'video/mp4',
+          'video/webm;codecs=vp9',
+          'video/webm;codecs=vp8',
+          'video/webm'
+        ];
+        for (const t of fallbackTypes) {
+          if (MediaRecorder.isTypeSupported(t)) {
+            selectedType = t;
+            break;
+          }
+        }
+        fallbackUsed = true;
       }
 
       if (!selectedType) {
@@ -324,7 +357,7 @@ export default function App() {
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunks, { type: selectedType });
         const url = URL.createObjectURL(blob);
-        const ext = selectedType.includes('mp4') ? 'mp4' : 'webm';
+        const ext = videoFormat;
         
         const counterStr = localStorage.getItem('sappy_error_export_counter') || '1';
         const counterVal = parseInt(counterStr) || 1;
@@ -340,7 +373,11 @@ export default function App() {
         document.body.removeChild(a);
         
         setIsRecordingVideo(false);
-        triggerToast(`¡Video ${fileName} descargado con éxito!`, 'success');
+        if (fallbackUsed && videoFormat === 'mp4' && !selectedType.includes('mp4')) {
+          triggerToast(`¡Video guardado como ${fileName} (contenedor compatible MP4)!`, 'success');
+        } else {
+          triggerToast(`¡Video ${fileName} descargado con éxito!`, 'success');
+        }
       };
 
       // Start recording
@@ -588,7 +625,7 @@ export default function App() {
           
           <div className="w-full max-w-2xl flex flex-col gap-4">
             {/* Action Bar Above Canvas */}
-            <div className="flex items-center justify-between px-2">
+            <div className="flex items-center justify-between px-2 relative z-10">
               <div className="flex items-center gap-2">
                 <span className={`font-display text-[10px] font-bold uppercase tracking-widest ${
                   settings.darkTheme ? 'text-zinc-400' : 'text-zinc-600'
@@ -1005,12 +1042,12 @@ export default function App() {
                       { id: 'fold', label: 'Pliegues' },
                       { id: 'vortex', label: 'Vórtice' },
                       { id: 'mixed', label: 'Mixto' },
-                      { id: 'neural', label: 'Ondas Neuronales' },
+                      { id: 'neural', label: 'Ondas Dinámicas' },
                       { id: 'bird', label: 'Vuelo de Pájaro' },
                       { id: 'butterfly', label: 'Aleteo Mariposa' },
-                      { id: 'wind_currents', label: 'C. Viento 🍃' },
-                      { id: 'river_flow', label: 'Flujo Río 🌊' },
-                      { id: 'leaves_fall', label: 'Hojas Caídas 🍁' }
+                      { id: 'wind_currents', label: 'C. Viento' },
+                      { id: 'river_flow', label: 'Flujo Río' },
+                      { id: 'leaves_fall', label: 'Hojas Caídas' }
                     ].map(type => (
                       <button
                         key={type.id}
@@ -1786,42 +1823,69 @@ export default function App() {
                 </button>
 
                 {/* Alternativas de exportación: Video & JSON */}
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  <button
-                    onClick={handleRecordVideo}
-                    disabled={isRecordingVideo}
-                    className={`py-2.5 px-3 rounded-xl flex items-center justify-center font-mono text-[9px] uppercase tracking-widest font-bold gap-1.5 transition-all shadow border cursor-pointer ${
-                      settings.darkTheme
-                        ? 'bg-zinc-900 border-white/5 text-zinc-300 hover:text-white hover:bg-zinc-800/80 disabled:opacity-40'
-                        : 'bg-white border-neutral-200 text-neutral-700 hover:text-neutral-900 hover:bg-neutral-50 disabled:opacity-55'
-                    }`}
-                    title="Graba 5 segundos de animación de tu lienzo como archivo de video"
-                  >
-                    {isRecordingVideo ? (
-                      <span className="flex items-center gap-1 text-rose-500 animate-pulse">
-                        <span className="w-2 h-2 rounded-full bg-rose-500 inline-block mr-0.5" />
-                        <span>Rec {recordingSeconds}s</span>
-                      </span>
-                    ) : (
-                      <>
-                        <Video className="w-3.5 h-3.5 text-rose-500/80" />
-                        <span>Guardar Video</span>
-                      </>
-                    )}
-                  </button>
+                <div className="space-y-2.5 mt-3">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500 font-bold">
+                      Formato de Video
+                    </span>
+                    <div className="flex gap-1.5">
+                      {['mp4', 'webm'].map((fmt) => (
+                        <button
+                          key={fmt}
+                          onClick={() => setVideoFormat(fmt as any)}
+                          className={`px-2.5 py-1 rounded-lg text-[8px] font-mono uppercase tracking-wider border transition-all cursor-pointer ${
+                            videoFormat === fmt
+                              ? settings.darkTheme
+                                ? 'bg-white border-white text-black font-bold shadow-sm'
+                                : 'bg-neutral-900 border-neutral-900 text-white font-bold'
+                              : settings.darkTheme
+                              ? 'border-white/5 text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.02]'
+                              : 'border-neutral-200 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-50'
+                          }`}
+                        >
+                          {fmt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-                  <button
-                    onClick={handleDownloadJson}
-                    className={`py-2.5 px-3 rounded-xl flex items-center justify-center font-mono text-[9px] uppercase tracking-widest font-bold gap-1.5 transition-all shadow border cursor-pointer ${
-                      settings.darkTheme
-                        ? 'bg-zinc-900 border-white/5 text-zinc-300 hover:text-white hover:bg-zinc-800/80'
-                        : 'bg-white border-neutral-200 text-neutral-700 hover:text-neutral-900 hover:bg-neutral-50'
-                    }`}
-                    title="Descarga la configuración técnica actual como archivo JSON"
-                  >
-                    <FileJson className="w-3.5 h-3.5 text-indigo-500/80" />
-                    <span>Exportar JSON</span>
-                  </button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={handleRecordVideo}
+                      disabled={isRecordingVideo}
+                      className={`py-2.5 px-3 rounded-xl flex items-center justify-center font-mono text-[9px] uppercase tracking-widest font-bold gap-1.5 transition-all shadow border cursor-pointer ${
+                        settings.darkTheme
+                          ? 'bg-zinc-900 border-white/5 text-zinc-300 hover:text-white hover:bg-zinc-800/80 disabled:opacity-40'
+                          : 'bg-white border-neutral-200 text-neutral-700 hover:text-neutral-900 hover:bg-neutral-50 disabled:opacity-55'
+                      }`}
+                      title={`Graba 5 segundos de animación de tu lienzo como archivo de video ${videoFormat.toUpperCase()}`}
+                    >
+                      {isRecordingVideo ? (
+                        <span className="flex items-center gap-1 text-rose-500 animate-pulse">
+                          <span className="w-2 h-2 rounded-full bg-rose-500 inline-block mr-0.5" />
+                          <span>Rec {recordingSeconds}s</span>
+                        </span>
+                      ) : (
+                        <>
+                          <Video className="w-3.5 h-3.5 text-rose-500/80" />
+                          <span>Guardar Video</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={handleDownloadJson}
+                      className={`py-2.5 px-3 rounded-xl flex items-center justify-center font-mono text-[9px] uppercase tracking-widest font-bold gap-1.5 transition-all shadow border cursor-pointer ${
+                        settings.darkTheme
+                          ? 'bg-zinc-900 border-white/5 text-zinc-300 hover:text-white hover:bg-zinc-800/80'
+                          : 'bg-white border-neutral-200 text-neutral-700 hover:text-neutral-900 hover:bg-neutral-50'
+                      }`}
+                      title="Descarga la configuración técnica actual como archivo JSON"
+                    >
+                      <FileJson className="w-3.5 h-3.5 text-indigo-500/80" />
+                      <span>Exportar JSON</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

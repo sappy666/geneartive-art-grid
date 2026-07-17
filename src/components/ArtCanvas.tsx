@@ -978,7 +978,9 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
   return (
     <div 
       ref={containerRef} 
-      className="w-full flex items-center justify-center p-4 bg-transparent aspect-square max-h-[80vh]"
+      className={`w-full flex items-center justify-center p-4 bg-transparent max-h-[80vh] relative z-0 ${
+        aspectRatio === '4:5' ? 'aspect-[4/5]' : 'aspect-square'
+      }`}
     >
       <div 
         className={`relative overflow-hidden rounded-2xl shadow-2xl border transition-all duration-300 ${
