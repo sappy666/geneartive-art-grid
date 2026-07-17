@@ -846,6 +846,16 @@ export default function App() {
                     <option value="retro_acid">Ácido Retro (Cian, Amarillo y Magenta)</option>
                     <option value="cosmic_violet">Violeta Cósmico (Místico Espacial)</option>
                     <option value="pastel_grid">Cuadrícula Pastel (Suave y Editorial)</option>
+                    <option value="blood_red">Rojo Sangre / Blood Red (Profundo y Rosado)</option>
+                    <option value="pastel_magenta">Pastel Magenta (Bosque sobre Rosa)</option>
+                    <option value="lincoln_green">Verde Lincoln (Ácido sobre Verde Profundo)</option>
+                    <option value="light_lime">Lima Claro (Violeta sobre Ácido)</option>
+                    <option value="grape_power">Uva Eléctrico / Grape (Oro sobre Violeta)</option>
+                    <option value="sinopia_sun">Sol Sinopia (Rojo Brillante sobre Amarillo)</option>
+                    <option value="brilliant_rose">Rosa Brillante / Brilliant Rose (Cálido y Eléctrico)</option>
+                    <option value="baby_pink">Rosa Bebé (Luz de Luna sobre Rosa Neón)</option>
+                    <option value="golden_brown">Marrón Dorado / Golden Brown (Oro sobre Tierra)</option>
+                    <option value="dark_cerulean">Azul Cerúleo / Dark Cerulean (Cielo sobre Océano)</option>
                   </select>
                 </div>
 
@@ -865,14 +875,48 @@ export default function App() {
                             : 'border-neutral-200 text-neutral-800 bg-white focus:border-neutral-400 shadow-sm'
                         }`}
                       >
-                        <option value="x">Equis (x) tradicional</option>
+                        <option value="x">Equis (✕) tradicional</option>
                         <option value="plus">Símbolo Más (+)</option>
                         <option value="star_empty">Estrella vacía (☆)</option>
-                        <option value="star_filled">Estrella rellena (✰)</option>
+                        <option value="star_filled">Estrella rellena (★)</option>
+                        <option value="star_fancy">Estrella fancy (✰)</option>
                         <option value="starfish">Estrella de mar (𓇼)</option>
-                        <option value="heart">Corazón (❤︎)</option>
+                        <option value="heart">Corazón clásico (❤︎)</option>
                         <option value="circle_empty">Círculo vacío (○)</option>
-                        <option value="mix">Mezcla aleatoria</option>
+                        <optgroup label="Símbolos Populares (Individuales)">
+                          <option value="♡">Corazón Lineal (♡)</option>
+                          <option value="♥">Corazón Relleno (♥)</option>
+                          <option value="❥">Corazón Flecha (❥)</option>
+                          <option value="ღ">Abrazo / Loto (ღ)</option>
+                          <option value="𐙚">Lazo Coquette (𐙚)</option>
+                          <option value="❀">Flor de Cerezo (❀)</option>
+                          <option value="✿">Flor Rellena (✿)</option>
+                          <option value="ツ">Sonrisa / Tsu (ツ)</option>
+                          <option value="☾">Media Luna (☾)</option>
+                          <option value="✩">Estrella de Líneas (✩)</option>
+                          <option value="⭒">Estrella Pequeña Rellena (⭒)</option>
+                          <option value="⭑">Estrella Pequeña (⭑)</option>
+                          <option value="⟡">Brillo / Diamante (⟡)</option>
+                          <option value="✦">Destello Relleno (✦)</option>
+                          <option value="⋆">Estrella Celestial (⋆)</option>
+                          <option value="✶">Estrella de 8 Puntas (✶)</option>
+                          <option value="✴︎">Estrella Geométrica (✴︎)</option>
+                          <option value="𓆉">Tortuga de Mar (𓆉)</option>
+                          <option value="🍥">Pastel de Pescado / Remolino (🍥)</option>
+                          <option value="∞">Infinito (∞)</option>
+                          <option value="♕">Corona de Reina (♕)</option>
+                          <option value="✞">Cruz Latina Rellena (✞)</option>
+                          <option value="♱">Cruz Gótica (♱)</option>
+                          <option value="㌖">Kilo Kanji (㌖)</option>
+                        </optgroup>
+                        <optgroup label="Combinaciones Artísticas">
+                          <option value="mix_popular">Mix Ultra-Popular (Letras, Corazones, Estrellas)</option>
+                          <option value="mix_stars">Constelación de Estrellas (★, ☆, ✦, ⟡)</option>
+                          <option value="mix_hearts">San Valentín / Corazones (♡, ♥, ❥, ღ, ❦)</option>
+                          <option value="mix_mystic">Místico y Esotérico (☾, ♱, †, ✞, ∞)</option>
+                          <option value="mix_asian">Remolinos y Símbolos Orientales (𐙚, 🍥, ツ, ࿔)</option>
+                          <option value="mix">Mezcla Clásica</option>
+                        </optgroup>
                       </select>
                       <p className="text-[9px] text-zinc-400 mt-1 font-mono leading-normal">
                         Personaliza los símbolos bordados a mano sobre la trama del tejido.

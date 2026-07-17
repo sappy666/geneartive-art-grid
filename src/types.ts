@@ -42,8 +42,8 @@ export interface ArtSettings {
   paperTexture: boolean; // subtle grain overlay on the canvas
   colorInverted: boolean; // invert drawing colors
   includeSignature: boolean; // toggle signature sappy.error
-  colorPalette?: 'monochrome' | 'cannes_blue' | 'pop_pink' | 'neon_garden' | 'bauhaus' | 'retro_acid' | 'cosmic_violet' | 'pastel_grid';
-  crossStitchSymbol?: 'x' | 'plus' | 'star_empty' | 'star_filled' | 'star_fancy' | 'starfish' | 'heart' | 'mix' | 'circle_empty';
+  colorPalette?: 'monochrome' | 'cannes_blue' | 'pop_pink' | 'neon_garden' | 'bauhaus' | 'retro_acid' | 'cosmic_violet' | 'pastel_grid' | 'blood_red' | 'pastel_magenta' | 'lincoln_green' | 'light_lime' | 'grape_power' | 'sinopia_sun' | 'brilliant_rose' | 'baby_pink' | 'golden_brown' | 'dark_cerulean';
+  crossStitchSymbol?: string;
 }
 
 export interface Preset {

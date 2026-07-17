@@ -169,6 +169,106 @@ const getPaletteColors = (palette: string, isDark: boolean): PaletteColors => {
         accent3: '#FFE5D9', // Pastel sand
         isDarkTheme: false
       };
+    case 'blood_red':
+      return {
+        bg: '#630700',
+        stroke: '#FF97D0',
+        point: '#FF97D0',
+        accent1: '#D13F13',
+        accent2: '#FF5E97',
+        accent3: '#E63946',
+        isDarkTheme: true
+      };
+    case 'pastel_magenta':
+      return {
+        bg: '#FF97D0',
+        stroke: '#125603',
+        point: '#125603',
+        accent1: '#C3F380',
+        accent2: '#D8E2DC',
+        accent3: '#7523B4',
+        isDarkTheme: false
+      };
+    case 'lincoln_green':
+      return {
+        bg: '#125603',
+        stroke: '#C3F380',
+        point: '#C3F380',
+        accent1: '#FF97D0',
+        accent2: '#7523B4',
+        accent3: '#0D1B2A',
+        isDarkTheme: true
+      };
+    case 'light_lime':
+      return {
+        bg: '#C3F380',
+        stroke: '#7523B4',
+        point: '#7523B4',
+        accent1: '#FF97D0',
+        accent2: '#125603',
+        accent3: '#D13F13',
+        isDarkTheme: false
+      };
+    case 'grape_power':
+      return {
+        bg: '#7523B4',
+        stroke: '#FAE170',
+        point: '#FAE170',
+        accent1: '#FF97D0',
+        accent2: '#D13F13',
+        accent3: '#39FF14',
+        isDarkTheme: true
+      };
+    case 'sinopia_sun':
+      return {
+        bg: '#FAE170',
+        stroke: '#D13F13',
+        point: '#D13F13',
+        accent1: '#7523B4',
+        accent2: '#FFDB58',
+        accent3: '#125603',
+        isDarkTheme: false
+      };
+    case 'brilliant_rose':
+      return {
+        bg: '#D13F13',
+        stroke: '#FCC5C6',
+        point: '#FCC5C6',
+        accent1: '#7523B4',
+        accent2: '#FF97D0',
+        accent3: '#FAE170',
+        isDarkTheme: true
+      };
+    case 'baby_pink':
+      return {
+        bg: '#F058AB',
+        stroke: '#F1FFBA',
+        point: '#F1FFBA',
+        accent1: '#7523B4',
+        accent2: '#C3F380',
+        accent3: '#FAE170',
+        isDarkTheme: false
+      };
+    case 'golden_brown':
+      return {
+        bg: '#906713',
+        stroke: '#FFDB58',
+        point: '#FFDB58',
+        accent1: '#D13F13',
+        accent2: '#FAF4EB',
+        accent3: '#125603',
+        isDarkTheme: true
+      };
+    case 'dark_cerulean':
+      return {
+        bg: '#0D5072',
+        stroke: '#7FEEFF',
+        point: '#7FEEFF',
+        accent1: '#FAE170',
+        accent2: '#7523B4',
+        accent3: '#FF97D0',
+        isDarkTheme: true
+      };
     case 'monochrome':
     default:
       return {
@@ -192,13 +292,33 @@ const getCrossStitchSymbolChar = (symbol: string, c: number, r: number) => {
     case 'starfish': return '𓇼';
     case 'heart': return '❤︎';
     case 'circle_empty': return '○';
+    case 'mix_popular': {
+      const symbols = ['♡', '𐙚', '✩', '♥', '❀', '⭒', '⭑', '𓆉', '✴︎', 'ツ', '❦', '☾', '❥', '⟡', '★', 'ღ', '✭', '⊹', '✶', '†', '✦', '⋆', '➤', '☆', '🍥', '❤', '✿', '✞', '∞', '♡⃝'];
+      return symbols[(c * 7 + r * 13) % symbols.length];
+    }
+    case 'mix_stars': {
+      const symbols = ['★', '☆', '✩', '⭒', '⭑', '✦', '⋆', '✶', '✭', '⟡', '⟢'];
+      return symbols[(c * 9 + r * 11) % symbols.length];
+    }
+    case 'mix_hearts': {
+      const symbols = ['♡', '♥', '❥', 'ღ', '❦', '❤', '♡⃝', 'ৎ୭'];
+      return symbols[(c * 3 + r * 17) % symbols.length];
+    }
+    case 'mix_mystic': {
+      const symbols = ['☾', '♱', '†', '✞', '✟', '𝄢', '∞', '⸽', '꧁', '꧂'];
+      return symbols[(c * 5 + r * 19) % symbols.length];
+    }
+    case 'mix_asian': {
+      const symbols = ['𐙚', '㌖', 'ツ', 'ఇ', 'ও', '🍥', 'ৎ୭', '࿔'];
+      return symbols[(c * 11 + r * 7) % symbols.length];
+    }
     case 'mix': {
       const symbols = ['☆', '✰', '𓇼', '❤︎', '★', '○'];
       return symbols[(c * 7 + r * 13) % symbols.length];
     }
     case 'x':
     default:
-      return '✕';
+      return symbol.length === 1 ? symbol : '✕';
   }
 };
 
