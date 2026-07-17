@@ -87,6 +87,121 @@ const getAsciiChar = (c: number, r: number, dist: number, cols: number, rows: nu
   return char;
 };
 
+interface PaletteColors {
+  bg: string;
+  stroke: string;
+  point: string;
+  accent1?: string;
+  accent2?: string;
+  accent3?: string;
+  isDarkTheme?: boolean;
+}
+
+const getPaletteColors = (palette: string, isDark: boolean): PaletteColors => {
+  switch (palette) {
+    case 'cannes_blue':
+      return {
+        bg: '#0026FF', // Deep electric blue (Klein Blue)
+        stroke: '#FFFFFF', // High-contrast crisp white
+        point: '#FFFFFF',
+        accent1: 'rgba(255, 255, 255, 0.2)',
+        accent2: 'rgba(255, 255, 255, 0.45)',
+        accent3: 'rgba(255, 255, 255, 0.75)',
+        isDarkTheme: true
+      };
+    case 'pop_pink':
+      return {
+        bg: '#FF007F', // Neon hot pink
+        stroke: '#FFFFFF', // White
+        point: '#00FFFF', // Cyan
+        accent1: '#FF5E97', // Soft hot pink
+        accent2: '#00FFFF', // Electric cyan
+        accent3: '#FFE3F1', // Lavender pink
+        isDarkTheme: true
+      };
+    case 'neon_garden':
+      return {
+        bg: '#0D1B2A', // Dark navy background
+        stroke: '#39FF14', // Neon lime green
+        point: '#FF007F', // Hot pink points
+        accent1: 'rgba(57, 255, 20, 0.25)',
+        accent2: 'rgba(255, 0, 127, 0.45)',
+        accent3: '#00FFFF', // Cyan
+        isDarkTheme: true
+      };
+    case 'bauhaus':
+      return {
+        bg: '#F1EFE0', // Cream paper
+        stroke: '#1A1A1A', // Dark charcoal
+        point: '#E63946', // Bauhaus red
+        accent1: '#457B9D', // Bauhaus blue
+        accent2: '#F1A709', // Bauhaus yellow
+        accent3: '#E63946', // Bauhaus red
+        isDarkTheme: false
+      };
+    case 'retro_acid':
+      return {
+        bg: '#0A0A0A', // Dark black
+        stroke: '#CCFF00', // Acid lime green
+        point: '#CCFF00',
+        accent1: 'rgba(204, 255, 0, 0.15)',
+        accent2: 'rgba(204, 255, 0, 0.45)',
+        accent3: 'rgba(204, 255, 0, 0.75)',
+        isDarkTheme: true
+      };
+    case 'cosmic_violet':
+      return {
+        bg: '#120024', // Deep space violet
+        stroke: '#DDA0DD', // Orchid
+        point: '#00FFFF', // Cyan
+        accent1: 'rgba(0, 255, 255, 0.2)',
+        accent2: 'rgba(221, 160, 221, 0.4)',
+        accent3: '#FF00FF', // Magenta
+        isDarkTheme: true
+      };
+    case 'pastel_grid':
+      return {
+        bg: '#FAF4EB', // Soft warm cream
+        stroke: '#4A3B32', // Dark espresso brown
+        point: '#FFB5A7', // Soft peach
+        accent1: '#FCD5CE', // Soft rose pink
+        accent2: '#D8E2DC', // Soft sage green
+        accent3: '#FFE5D9', // Pastel sand
+        isDarkTheme: false
+      };
+    case 'monochrome':
+    default:
+      return {
+        bg: isDark ? '#0A0A0A' : '#FAF9F6',
+        stroke: isDark ? 'rgba(255, 255, 255, 0.85)' : 'rgba(18, 18, 18, 0.85)',
+        point: isDark ? 'rgba(255, 255, 255, 0.95)' : 'rgba(18, 18, 18, 0.95)',
+        accent1: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.07)',
+        accent2: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
+        accent3: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.09)',
+        isDarkTheme: isDark
+      };
+  }
+};
+
+const getCrossStitchSymbolChar = (symbol: string, c: number, r: number) => {
+  switch (symbol) {
+    case 'plus': return '+';
+    case 'star_empty': return '☆';
+    case 'star_filled': return '★';
+    case 'star_fancy': return '✰';
+    case 'starfish': return '𓇼';
+    case 'heart': return '❤︎';
+    case 'circle_empty': return '○';
+    case 'mix': {
+      const symbols = ['☆', '✰', '𓇼', '❤︎', '★', '○'];
+      return symbols[(c * 7 + r * 13) % symbols.length];
+    }
+    case 'x':
+    default:
+      return '✕';
+  }
+};
+
 interface ArtCanvasProps {
   settings: ArtSettings;
   onClearDisplacement?: () => void;
@@ -248,15 +363,13 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
       const isDark = settings.darkTheme;
       const isColorInverted = settings.colorInverted;
       
-      // Determine final background & stroke colors
-      let bgColor = isDark ? '#0A0A0A' : '#FAF9F6';
-      let strokeColor = isDark ? 'rgba(255, 255, 255, 0.85)' : 'rgba(18, 18, 18, 0.85)';
-      let pointColor = isDark ? 'rgba(255, 255, 255, 0.95)' : 'rgba(18, 18, 18, 0.95)';
+      // Determine final background & stroke colors from palette
+      let { bg: bgColor, stroke: strokeColor, point: pointColor, accent1, accent2, accent3, isDarkTheme } = getPaletteColors(settings.colorPalette || 'monochrome', isDark);
 
       if (isColorInverted) {
         const tempBg = bgColor;
-        bgColor = strokeColor.startsWith('rgba(18') ? '#0A0A0A' : '#FAF9F6';
-        strokeColor = tempBg === '#0A0A0A' ? 'rgba(18, 18, 18, 0.85)' : 'rgba(255, 255, 255, 0.85)';
+        bgColor = strokeColor;
+        strokeColor = tempBg;
         pointColor = strokeColor;
       }
 
@@ -265,7 +378,7 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
 
       // Draw subtle noise grain/paper texture if enabled
       if (settings.paperTexture) {
-        ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.015)' : 'rgba(0, 0, 0, 0.02)';
+        ctx.fillStyle = isDarkTheme ? 'rgba(255, 255, 255, 0.015)' : 'rgba(0, 0, 0, 0.02)';
         for (let i = 0; i < dimensions.width; i += 3) {
           for (let j = 0; j < dimensions.height; j += 3) {
             if (Math.random() > 0.5) {
@@ -527,7 +640,7 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
 
               // Alternate shading of triangular isometric facets to resemble stairs steps
               if ((c + r) % 2 === 0) {
-                ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)';
+                ctx.fillStyle = isDarkTheme ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)';
                 ctx.beginPath();
                 ctx.moveTo(pTL.x, pTL.y);
                 ctx.lineTo(pTR.x, pTR.y);
@@ -535,7 +648,7 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
                 ctx.closePath();
                 ctx.fill();
 
-                ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.09)';
+                ctx.fillStyle = isDarkTheme ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.09)';
                 ctx.beginPath();
                 ctx.moveTo(pTR.x, pTR.y);
                 ctx.lineTo(pBR.x, pBR.y);
@@ -543,7 +656,7 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
                 ctx.closePath();
                 ctx.fill();
               } else {
-                ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.015)';
+                ctx.fillStyle = isDarkTheme ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.015)';
                 ctx.beginPath();
                 ctx.moveTo(pTL.x, pTL.y);
                 ctx.lineTo(pTR.x, pTR.y);
@@ -569,14 +682,20 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
             ctx.closePath();
 
             const ratio = r / rows;
-            ctx.fillStyle = isDark 
-              ? `rgba(20, 22, 28, ${0.12 + ratio * 0.78})` 
-              : `rgba(238, 235, 228, ${0.12 + ratio * 0.7})`;
+            if (settings.colorPalette && settings.colorPalette !== 'monochrome') {
+              ctx.fillStyle = isDarkTheme 
+                ? `rgba(255, 255, 255, ${0.08 + ratio * 0.6})` 
+                : `rgba(0, 0, 0, ${0.08 + ratio * 0.6})`;
+            } else {
+              ctx.fillStyle = isDarkTheme 
+                ? `rgba(20, 22, 28, ${0.12 + ratio * 0.78})` 
+                : `rgba(238, 235, 228, ${0.12 + ratio * 0.7})`;
+            }
             ctx.fill();
             
             // Highlight the ridge line with a solid stroke
             ctx.lineWidth = settings.strokeWidth * 1.5;
-            ctx.strokeStyle = isDark 
+            ctx.strokeStyle = isDarkTheme 
               ? `rgba(255, 255, 255, ${0.15 + ratio * 0.5})` 
               : `rgba(18, 18, 18, ${0.15 + ratio * 0.55})`;
             ctx.beginPath();
@@ -602,29 +721,59 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
             }
             ctx.closePath();
             
-            // Fill alternate swirly channels
-            ctx.fillStyle = isDark 
-              ? 'rgba(255, 255, 255, 0.08)' 
-              : 'rgba(0, 0, 0, 0.07)';
+            // Fill alternate swirly channels with multiple vibrant colors if active
+            const accentColors = [accent1, accent2, accent3].filter(Boolean) as string[];
+            if (accentColors.length > 0) {
+              ctx.fillStyle = accentColors[Math.floor(r / 2) % accentColors.length];
+            } else {
+              ctx.fillStyle = isDarkTheme 
+                ? 'rgba(255, 255, 255, 0.08)' 
+                : 'rgba(0, 0, 0, 0.07)';
+            }
             ctx.fill();
           }
         }
 
-        // Special renderer for cross stitch Xs
+        // Special renderer for cross stitch Xs and symbols
         if (settings.distortionType === 'cross_stitch') {
           const stitchSize = Math.max(3, settings.strokeWidth * 1.8 + 1.2);
-          ctx.lineWidth = settings.strokeWidth * 1.25;
-          ctx.strokeStyle = strokeColor;
-          
-          for (let c = 0; c < cols; c++) {
-            for (let r = 0; r < rows; r++) {
-              const p = points[c][r];
-              ctx.beginPath();
-              ctx.moveTo(p.x - stitchSize, p.y - stitchSize);
-              ctx.lineTo(p.x + stitchSize, p.y + stitchSize);
-              ctx.moveTo(p.x + stitchSize, p.y - stitchSize);
-              ctx.lineTo(p.x - stitchSize, p.y + stitchSize);
-              ctx.stroke();
+          const symbol = settings.crossStitchSymbol || 'x';
+
+          if (symbol === 'x' || symbol === 'plus') {
+            ctx.lineWidth = settings.strokeWidth * 1.25;
+            ctx.strokeStyle = strokeColor;
+            for (let c = 0; c < cols; c++) {
+              for (let r = 0; r < rows; r++) {
+                const p = points[c][r];
+                ctx.beginPath();
+                if (symbol === 'x') {
+                  ctx.moveTo(p.x - stitchSize, p.y - stitchSize);
+                  ctx.lineTo(p.x + stitchSize, p.y + stitchSize);
+                  ctx.moveTo(p.x + stitchSize, p.y - stitchSize);
+                  ctx.lineTo(p.x - stitchSize, p.y + stitchSize);
+                } else {
+                  ctx.moveTo(p.x - stitchSize, p.y);
+                  ctx.lineTo(p.x + stitchSize, p.y);
+                  ctx.moveTo(p.x, p.y - stitchSize);
+                  ctx.lineTo(p.x, p.y + stitchSize);
+                }
+                ctx.stroke();
+              }
+            }
+          } else {
+            // Draw custom symbols using typography!
+            const fSize = Math.max(8, settings.strokeWidth * 3 + 10);
+            ctx.font = `${fSize}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = strokeColor;
+
+            for (let c = 0; c < cols; c++) {
+              for (let r = 0; r < rows; r++) {
+                const p = points[c][r];
+                const char = getCrossStitchSymbolChar(symbol, c, r);
+                ctx.fillText(char, p.x, p.y);
+              }
             }
           }
         }
@@ -721,7 +870,6 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
         }
       } else if (settings.renderMode === 'ascii') {
         // High-tech ASCII code/matrix rendering
-        ctx.fillStyle = strokeColor;
         const fSize = settings.textSize || 10;
         ctx.font = `500 ${fSize}px "JetBrains Mono", monospace`;
         ctx.textAlign = 'center';
@@ -735,6 +883,21 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
             const dist = Math.sqrt(dx * dx + dy * dy);
             
             const char = getAsciiChar(c, r, dist, cols, rows, settings);
+
+            if (settings.colorPalette && settings.colorPalette !== 'monochrome' && accent1 && accent2 && accent3) {
+              const accentIndex = (c * 5 + r * 11) % 15;
+              if (accentIndex === 0) {
+                ctx.fillStyle = accent1;
+              } else if (accentIndex === 1) {
+                ctx.fillStyle = accent2;
+              } else if (accentIndex === 2) {
+                ctx.fillStyle = accent3;
+              } else {
+                ctx.fillStyle = strokeColor;
+              }
+            } else {
+              ctx.fillStyle = strokeColor;
+            }
 
             if (dist > 2) {
               ctx.save();
@@ -942,14 +1105,13 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
     const isDark = settings.darkTheme;
     const isColorInverted = settings.colorInverted;
     
-    let bgColor = isDark ? '#0A0A0A' : '#FAF9F6';
-    let strokeColor = isDark ? 'rgba(255, 255, 255, 0.9)' : 'rgba(18, 18, 18, 0.9)';
-    let pointColor = isDark ? 'rgba(255, 255, 255, 0.95)' : 'rgba(18, 18, 18, 0.95)';
+    // Determine final background & stroke colors from palette
+    let { bg: bgColor, stroke: strokeColor, point: pointColor, accent1, accent2, accent3, isDarkTheme } = getPaletteColors(settings.colorPalette || 'monochrome', isDark);
 
     if (isColorInverted) {
       const tempBg = bgColor;
-      bgColor = strokeColor.startsWith('rgba(18') ? '#0A0A0A' : '#FAF9F6';
-      strokeColor = tempBg === '#0A0A0A' ? 'rgba(18, 18, 18, 0.9)' : 'rgba(255, 255, 255, 0.9)';
+      bgColor = strokeColor;
+      strokeColor = tempBg;
       pointColor = strokeColor;
     }
 
@@ -958,7 +1120,7 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
 
     // Subtle paper noise grain at high resolution over the whole canvas
     if (settings.paperTexture) {
-      tempCtx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.015)' : 'rgba(0, 0, 0, 0.025)';
+      tempCtx.fillStyle = isDarkTheme ? 'rgba(255, 255, 255, 0.015)' : 'rgba(0, 0, 0, 0.025)';
       for (let i = 0; i < targetW; i += Math.max(3, multiplier)) {
         for (let j = 0; j < targetH; j += Math.max(3, multiplier)) {
           if (Math.random() > 0.5) {
@@ -1042,14 +1204,20 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
           tempCtx.closePath();
 
           const ratio = r / rows;
-          tempCtx.fillStyle = isDark 
-            ? `rgba(20, 22, 28, ${0.12 + ratio * 0.78})` 
-            : `rgba(238, 235, 228, ${0.12 + ratio * 0.7})`;
+          if (settings.colorPalette && settings.colorPalette !== 'monochrome') {
+            tempCtx.fillStyle = isDarkTheme 
+              ? `rgba(255, 255, 255, ${0.08 + ratio * 0.6})` 
+              : `rgba(0, 0, 0, ${0.08 + ratio * 0.6})`;
+          } else {
+            tempCtx.fillStyle = isDarkTheme 
+              ? `rgba(20, 22, 28, ${0.12 + ratio * 0.78})` 
+              : `rgba(238, 235, 228, ${0.12 + ratio * 0.7})`;
+          }
           tempCtx.fill();
           
           // Highlight the ridge line with a solid stroke
           tempCtx.lineWidth = settings.strokeWidth * multiplier * 1.5;
-          tempCtx.strokeStyle = isDark 
+          tempCtx.strokeStyle = isDarkTheme 
             ? `rgba(255, 255, 255, ${0.15 + ratio * 0.5})` 
             : `rgba(18, 18, 18, ${0.15 + ratio * 0.55})`;
           tempCtx.beginPath();
@@ -1079,29 +1247,60 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
           }
           tempCtx.closePath();
           
-          // Fill alternate swirly channels
-          tempCtx.fillStyle = isDark 
-            ? 'rgba(255, 255, 255, 0.08)' 
-            : 'rgba(0, 0, 0, 0.07)';
+          // Fill alternate swirly channels with multiple colors if active
+          const accentColors = [accent1, accent2, accent3].filter(Boolean) as string[];
+          if (accentColors.length > 0) {
+            tempCtx.fillStyle = accentColors[Math.floor(r / 2) % accentColors.length];
+          } else {
+            tempCtx.fillStyle = isDarkTheme 
+              ? 'rgba(255, 255, 255, 0.08)' 
+              : 'rgba(0, 0, 0, 0.07)';
+          }
           tempCtx.fill();
         }
       }
 
-      // Special renderer for cross stitch Xs
+      // Special renderer for cross stitch Xs and symbols
       if (settings.distortionType === 'cross_stitch') {
         const stitchSize = Math.max(3, settings.strokeWidth * 1.8 + 1.2) * multiplier;
-        tempCtx.lineWidth = settings.strokeWidth * multiplier * 1.25;
-        tempCtx.strokeStyle = strokeColor;
-        
-        for (let c = 0; c < cols; c++) {
-          for (let r = 0; r < rows; r++) {
-            const p = getP(c, r);
-            tempCtx.beginPath();
-            tempCtx.moveTo(p.x - stitchSize, p.y - stitchSize);
-            tempCtx.lineTo(p.x + stitchSize, p.y + stitchSize);
-            tempCtx.moveTo(p.x + stitchSize, p.y - stitchSize);
-            tempCtx.lineTo(p.x - stitchSize, p.y + stitchSize);
-            tempCtx.stroke();
+        const symbol = settings.crossStitchSymbol || 'x';
+
+        if (symbol === 'x' || symbol === 'plus') {
+          tempCtx.lineWidth = settings.strokeWidth * multiplier * 1.25;
+          tempCtx.strokeStyle = strokeColor;
+          
+          for (let c = 0; c < cols; c++) {
+            for (let r = 0; r < rows; r++) {
+              const p = getP(c, r);
+              tempCtx.beginPath();
+              if (symbol === 'x') {
+                tempCtx.moveTo(p.x - stitchSize, p.y - stitchSize);
+                tempCtx.lineTo(p.x + stitchSize, p.y + stitchSize);
+                tempCtx.moveTo(p.x + stitchSize, p.y - stitchSize);
+                tempCtx.lineTo(p.x - stitchSize, p.y + stitchSize);
+              } else {
+                tempCtx.moveTo(p.x - stitchSize, p.y);
+                tempCtx.lineTo(p.x + stitchSize, p.y);
+                tempCtx.moveTo(p.x, p.y - stitchSize);
+                tempCtx.lineTo(p.x, p.y + stitchSize);
+              }
+              tempCtx.stroke();
+            }
+          }
+        } else {
+          // Draw custom symbols using typography!
+          const fSize = Math.max(8, settings.strokeWidth * 3 + 10) * multiplier;
+          tempCtx.font = `${fSize}px sans-serif`;
+          tempCtx.textAlign = 'center';
+          tempCtx.textBaseline = 'middle';
+          tempCtx.fillStyle = strokeColor;
+
+          for (let c = 0; c < cols; c++) {
+            for (let r = 0; r < rows; r++) {
+              const p = getP(c, r);
+              const char = getCrossStitchSymbolChar(symbol, c, r);
+              tempCtx.fillText(char, p.x, p.y);
+            }
           }
         }
       }
@@ -1201,7 +1400,6 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
         }
       }
     } else if (settings.renderMode === 'ascii') {
-      tempCtx.fillStyle = strokeColor;
       const fSize = (settings.textSize || 10) * multiplier;
       tempCtx.font = `500 ${fSize}px "JetBrains Mono", monospace`;
       tempCtx.textAlign = 'center';
@@ -1216,6 +1414,21 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
           const dist = Math.sqrt(dx * dx + dy * dy);
           
           const char = getAsciiChar(c, r, dist, cols, rows, settings);
+
+          if (settings.colorPalette && settings.colorPalette !== 'monochrome' && accent1 && accent2 && accent3) {
+            const accentIndex = (c * 5 + r * 11) % 15;
+            if (accentIndex === 0) {
+              tempCtx.fillStyle = accent1;
+            } else if (accentIndex === 1) {
+              tempCtx.fillStyle = accent2;
+            } else if (accentIndex === 2) {
+              tempCtx.fillStyle = accent3;
+            } else {
+              tempCtx.fillStyle = strokeColor;
+            }
+          } else {
+            tempCtx.fillStyle = strokeColor;
+          }
 
           if (dist > 2) {
             tempCtx.save();

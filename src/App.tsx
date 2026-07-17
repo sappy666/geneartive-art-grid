@@ -820,6 +820,63 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* Color Palette Selector */}
+                <div className="space-y-1.5 animate-fade-in">
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500 block font-semibold">
+                    Paleta de Color Artística
+                  </span>
+                  <select
+                    value={settings.colorPalette || 'monochrome'}
+                    onChange={(e) => updateSetting('colorPalette', e.target.value as any)}
+                    className={`w-full text-xs font-mono px-3 py-2.5 rounded-lg border outline-none bg-transparent transition-all cursor-pointer ${
+                      settings.darkTheme 
+                        ? 'border-white/10 text-white bg-zinc-950 focus:border-white/20' 
+                        : 'border-neutral-200 text-neutral-800 bg-white focus:border-neutral-400 shadow-sm'
+                    }`}
+                  >
+                    <option value="monochrome">Monocromático (B/N de Alta Fidelidad)</option>
+                    <option value="cannes_blue">Azul Cannes (Profundo y Elocuente)</option>
+                    <option value="pop_pink">Rosa Pop (Neón Elástico)</option>
+                    <option value="neon_garden">Jardín Neón (Ácido y Energético)</option>
+                    <option value="bauhaus">Bauhaus (Clásicos Primarios)</option>
+                    <option value="retro_acid">Ácido Retro (Cian, Amarillo y Magenta)</option>
+                    <option value="cosmic_violet">Violeta Cósmico (Místico Espacial)</option>
+                    <option value="pastel_grid">Cuadrícula Pastel (Suave y Editorial)</option>
+                  </select>
+                </div>
+
+                {/* Conditional Cross Stitch Settings */}
+                {settings.distortionType === 'cross_stitch' && (
+                  <div className="space-y-3.5 p-3.5 rounded-xl border border-dashed animate-fade-in bg-zinc-500/5 border-zinc-500/20">
+                    <div>
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500 block mb-1.5 font-semibold">
+                        Símbolo para Punto de Cruz
+                      </span>
+                      <select
+                        value={settings.crossStitchSymbol || 'x'}
+                        onChange={(e) => updateSetting('crossStitchSymbol', e.target.value as any)}
+                        className={`w-full text-xs font-mono px-3 py-2 rounded-lg border outline-none bg-transparent transition-all cursor-pointer ${
+                          settings.darkTheme 
+                            ? 'border-white/10 text-white bg-zinc-950 focus:border-white/20' 
+                            : 'border-neutral-200 text-neutral-800 bg-white focus:border-neutral-400 shadow-sm'
+                        }`}
+                      >
+                        <option value="x">Equis (x) tradicional</option>
+                        <option value="plus">Símbolo Más (+)</option>
+                        <option value="star_empty">Estrella vacía (☆)</option>
+                        <option value="star_filled">Estrella rellena (✰)</option>
+                        <option value="starfish">Estrella de mar (𓇼)</option>
+                        <option value="heart">Corazón (❤︎)</option>
+                        <option value="circle_empty">Círculo vacío (○)</option>
+                        <option value="mix">Mezcla aleatoria</option>
+                      </select>
+                      <p className="text-[9px] text-zinc-400 mt-1 font-mono leading-normal">
+                        Personaliza los símbolos bordados a mano sobre la trama del tejido.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Conditional Text Settings */}
                 {settings.renderMode === 'text' && (
                   <div className="space-y-3.5 p-3.5 rounded-xl border border-dashed animate-fade-in bg-zinc-500/5 border-zinc-500/20">
