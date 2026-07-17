@@ -269,6 +269,96 @@ const getPaletteColors = (palette: string, isDark: boolean): PaletteColors => {
         accent3: '#FF97D0',
         isDarkTheme: true
       };
+    case 'swiss_cyberpunk':
+      return {
+        bg: '#08090C',
+        stroke: '#00FF66',
+        point: '#00FF66',
+        accent1: '#FF5E00',
+        accent2: '#00E5FF',
+        accent3: '#FFFFFF',
+        isDarkTheme: true
+      };
+    case 'acid_tokyo':
+      return {
+        bg: '#1A0033',
+        stroke: '#00FFFF',
+        point: '#00FFFF',
+        accent1: '#FF007F',
+        accent2: '#8A2BE2',
+        accent3: '#FFD700',
+        isDarkTheme: true
+      };
+    case 'brutalist_concrete':
+      return {
+        bg: '#D0D3D4',
+        stroke: '#111111',
+        point: '#111111',
+        accent1: '#FF3B30',
+        accent2: '#007AFF',
+        accent3: '#F2F2F7',
+        isDarkTheme: false
+      };
+    case 'editorial_crimson':
+      return {
+        bg: '#FAF5EB',
+        stroke: '#800020',
+        point: '#800020',
+        accent1: '#1F4E37',
+        accent2: '#1D3557',
+        accent3: '#D4AF37',
+        isDarkTheme: false
+      };
+    case 'dada_yellow':
+      return {
+        bg: '#E6B800',
+        stroke: '#222222',
+        point: '#222222',
+        accent1: '#A62B2B',
+        accent2: '#2F4F4F',
+        accent3: '#F5F5DC',
+        isDarkTheme: false
+      };
+    case 'milano_chic':
+      return {
+        bg: '#C2D1C2',
+        stroke: '#B85A38',
+        point: '#B85A38',
+        accent1: '#ECC37B',
+        accent2: '#FFFDFC',
+        accent3: '#5D6D54',
+        isDarkTheme: false
+      };
+    case 'berlin_techno':
+      return {
+        bg: '#121212',
+        stroke: '#DFFF00',
+        point: '#DFFF00',
+        accent1: '#FF007F',
+        accent2: '#222222',
+        accent3: '#00E5FF',
+        isDarkTheme: true
+      };
+    case 'apricot_haze':
+      return {
+        bg: '#FCD0A1',
+        stroke: '#2E2A47',
+        point: '#2E2A47',
+        accent1: '#D3BCCC',
+        accent2: '#AFA2FF',
+        accent3: '#B1E5CD',
+        isDarkTheme: false
+      };
+    case 'indigo_midnight':
+      return {
+        bg: '#0A1128',
+        stroke: '#F4E9CD',
+        point: '#F4E9CD',
+        accent1: '#FF3864',
+        accent2: '#004E64',
+        accent3: '#25FDE9',
+        isDarkTheme: true
+      };
     case 'monochrome':
     default:
       return {
@@ -311,6 +401,38 @@ const getCrossStitchSymbolChar = (symbol: string, c: number, r: number) => {
     case 'mix_asian': {
       const symbols = ['𐙚', '㌖', 'ツ', 'ఇ', 'ও', '🍥', 'ৎ୭', '࿔'];
       return symbols[(c * 11 + r * 7) % symbols.length];
+    }
+    case 'emoji_acid_y2k': {
+      const symbols = ['🦋', '👾', '🍒', '🛸', '🕸️', '🔋', '💿', '🍭', '🧪', '⚡'];
+      return symbols[(c * 5 + r * 11) % symbols.length];
+    }
+    case 'emoji_soft_kawaii': {
+      const symbols = ['🧁', '🎀', '🧸', '🩰', '🌸', '🧼', '🫧', '🪞', '🍼', '🐾'];
+      return symbols[(c * 7 + r * 9) % symbols.length];
+    }
+    case 'emoji_nature_gothic': {
+      const symbols = ['🥀', '🕷️', '🕸️', '🖤', '🦇', '🫀', '🩸', '👁️', '🍄', '🐺'];
+      return symbols[(c * 4 + r * 13) % symbols.length];
+    }
+    case 'emoji_pixel_retro': {
+      const symbols = ['👾', '🕹️', '🎲', '📟', '💾', '🔌', '🧱', '⚡', '🎮', '👾'];
+      return symbols[(c * 13 + r * 3) % symbols.length];
+    }
+    case 'emoji_esoteric_magic': {
+      const symbols = ['🔮', '🧿', '🎴', '🕯️', '🔑', '📜', '🪐', '🌙', '👁️‍🗨️', '✨'];
+      return symbols[(c * 8 + r * 15) % symbols.length];
+    }
+    case 'emoji_brutalist_industrial': {
+      const symbols = ['⛓️', '⚙️', '🛠️', '🛢️', '🚦', '🏁', '⚠️', '🚧', '🔩', '🔨'];
+      return symbols[(c * 6 + r * 17) % symbols.length];
+    }
+    case 'mix_geometry_abstract': {
+      const symbols = ['▲', '▼', '◀', '▶', '◆', '◇', '■', '□', '●', '○', '◊', '◈', '⬡', '⬢'];
+      return symbols[(c * 10 + r * 12) % symbols.length];
+    }
+    case 'mix_editorial_brackets': {
+      const symbols = ['〔', '〕', '《', '》', '【', '】', '「', '」', '〖', '〗', '㌖', '⸻'];
+      return symbols[(c * 11 + r * 6) % symbols.length];
     }
     case 'mix': {
       const symbols = ['☆', '✰', '𓇼', '❤︎', '★', '○'];

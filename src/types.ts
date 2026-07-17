@@ -42,7 +42,7 @@ export interface ArtSettings {
   paperTexture: boolean; // subtle grain overlay on the canvas
   colorInverted: boolean; // invert drawing colors
   includeSignature: boolean; // toggle signature sappy.error
-  colorPalette?: 'monochrome' | 'cannes_blue' | 'pop_pink' | 'neon_garden' | 'bauhaus' | 'retro_acid' | 'cosmic_violet' | 'pastel_grid' | 'blood_red' | 'pastel_magenta' | 'lincoln_green' | 'light_lime' | 'grape_power' | 'sinopia_sun' | 'brilliant_rose' | 'baby_pink' | 'golden_brown' | 'dark_cerulean';
+  colorPalette?: 'monochrome' | 'cannes_blue' | 'pop_pink' | 'neon_garden' | 'bauhaus' | 'retro_acid' | 'cosmic_violet' | 'pastel_grid' | 'blood_red' | 'pastel_magenta' | 'lincoln_green' | 'light_lime' | 'grape_power' | 'sinopia_sun' | 'brilliant_rose' | 'baby_pink' | 'golden_brown' | 'dark_cerulean' | 'swiss_cyberpunk' | 'acid_tokyo' | 'brutalist_concrete' | 'editorial_crimson' | 'dada_yellow' | 'milano_chic' | 'berlin_techno' | 'apricot_haze' | 'indigo_midnight';
   crossStitchSymbol?: string;
 }
 

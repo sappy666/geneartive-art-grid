@@ -856,6 +856,17 @@ export default function App() {
                     <option value="baby_pink">Rosa Bebé (Luz de Luna sobre Rosa Neón)</option>
                     <option value="golden_brown">Marrón Dorado / Golden Brown (Oro sobre Tierra)</option>
                     <option value="dark_cerulean">Azul Cerúleo / Dark Cerulean (Cielo sobre Océano)</option>
+                    <optgroup label="Colección Editorial (Estilo Flyer & Posters)">
+                      <option value="swiss_cyberpunk">Swiss Cyberpunk (Verde Neón y Naranja de Seguridad)</option>
+                      <option value="acid_tokyo">Acid Tokyo (Turquesa Eléctrico y Rosa Fucsia)</option>
+                      <option value="brutalist_concrete">Brutalist Concrete (Gris Cemento, Negro Mate y Rojo Alarma)</option>
+                      <option value="editorial_crimson">Editorial Crimson (Gualda, Borgoña, Azul Prusia y Oro)</option>
+                      <option value="dada_yellow">Dada Yellow (Mostaza Profundo, Carbón y Ladrillo Bauhaus)</option>
+                      <option value="milano_chic">Milano Chic (Salvia, Arcilla Terracota y Oro Cálido)</option>
+                      <option value="berlin_techno">Berlin Techno (Grafito Oscuro, Amarillo Ácido y Estrobo Azul)</option>
+                      <option value="apricot_haze">Apricot Haze (Crema Albaricoque, Índigo, Lavanda y Menta)</option>
+                      <option value="indigo_midnight">Indigo Midnight (Azul Abisal, Champaña y Rubí Eléctrico)</option>
+                    </optgroup>
                   </select>
                 </div>
 
@@ -916,6 +927,18 @@ export default function App() {
                           <option value="mix_mystic">Místico y Esotérico (☾, ♱, †, ✞, ∞)</option>
                           <option value="mix_asian">Remolinos y Símbolos Orientales (𐙚, 🍥, ツ, ࿔)</option>
                           <option value="mix">Mezcla Clásica</option>
+                        </optgroup>
+                        <optgroup label="Combinaciones de Emojis Puros (Temáticos)">
+                          <option value="emoji_acid_y2k">Y2K / Ácido Retro (🦋, 👾, 🍒, 🛸, 💿, 🍭)</option>
+                          <option value="emoji_soft_kawaii">Soft Kawaii / Coquette (🧁, 🎀, 🧸, 🩰, 🌸, 🫧)</option>
+                          <option value="emoji_nature_gothic">Naturaleza Gótica (🥀, 🕷️, 🕸️, 🖤, 🫀, 🩸)</option>
+                          <option value="emoji_pixel_retro">Pixel Retro / Gaming (👾, 🕹️, 💾, 🔌, 🧱, 🎮)</option>
+                          <option value="emoji_esoteric_magic">Esotérico y Astral (🔮, 🧿, 🕯️, 🪐, 🌙, ✨)</option>
+                          <option value="emoji_brutalist_industrial">Industrial Brutalista (⛓️, ⚙️, 🛠️, 🚦, ⚠️, 🚧)</option>
+                        </optgroup>
+                        <optgroup label="Estructuras Geométricas y Editorial">
+                          <option value="mix_geometry_abstract">Geometría Abstracta (▲, ▼, ◀, ▶, ◆, ◇, ●, ○)</option>
+                          <option value="mix_editorial_brackets">Llaves y Corchetes Suizos (〔, 〕, 《, 》, 【, 】)</option>
                         </optgroup>
                       </select>
                       <p className="text-[9px] text-zinc-400 mt-1 font-mono leading-normal">
