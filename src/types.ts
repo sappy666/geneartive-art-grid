@@ -1,6 +1,7 @@
 export type InteractionMode = 'repel' | 'attract' | 'vortex' | 'smudge' | 'none';
-export type DistortionType = 'sine' | 'noise' | 'vortex' | 'fold' | 'mixed';
+export type DistortionType = 'sine' | 'noise' | 'vortex' | 'fold' | 'mixed' | 'neural' | 'bird' | 'butterfly' | 'wind_currents' | 'river_flow' | 'leaves_fall';
 export type ExportResolution = '1x' | '2x' | '4x' | '8x';
+export type RenderMode = 'lines' | 'points' | 'text' | 'cad-people';
 
 export interface ArtSettings {
   // Grid Setup
@@ -12,6 +13,11 @@ export interface ArtSettings {
   showVerticalLines: boolean;
   showHorizontalLines: boolean;
   diagonalLines: 'none' | 'left' | 'right' | 'both';
+  
+  // Render Style
+  renderMode: RenderMode;
+  customText: string;
+  textSize: number;
   
   // Distortion Settings
   distortionType: DistortionType;
@@ -34,6 +40,7 @@ export interface ArtSettings {
   darkTheme: boolean;
   paperTexture: boolean; // subtle grain overlay on the canvas
   colorInverted: boolean; // invert drawing colors
+  includeSignature: boolean; // toggle signature sappy.error
 }
 
 export interface Preset {
@@ -46,6 +53,14 @@ export interface Preset {
 export interface SavedConfig {
   id: string;
   name: string;
+  createdAt: string;
+  settings: ArtSettings;
+}
+
+export interface SavedCreation {
+  id: string;
+  name: string;
+  dataUrl: string;
   createdAt: string;
   settings: ArtSettings;
 }

@@ -5,6 +5,7 @@ import { fbm } from '../utils/noise';
 interface ArtCanvasProps {
   settings: ArtSettings;
   onClearDisplacement?: () => void;
+  aspectRatio?: '1:1' | '4:5';
 }
 
 export interface ArtCanvasRef {
@@ -23,7 +24,7 @@ interface GridPoint {
   persistDy: number; // Permanent sculpting displacement
 }
 
-export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, onClearDisplacement }, ref) => {
+export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, onClearDisplacement, aspectRatio = '1:1' }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [dimensions, setDimensions] = useState({ width: 600, height: 600 });
@@ -50,33 +51,45 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
 
     const resizeObserver = new ResizeObserver((entries) => {
       if (!entries || entries.length === 0) return;
-      const { width, height } = entries[0].contentRect;
+      const { width } = entries[0].contentRect;
       
-      // Keep canvas square or bounded nicely
-      const size = Math.max(280, Math.min(width, height, 800));
-      setDimensions({ width: size, height: size });
+      // Keep canvas square or bounded nicely based on selected aspect ratio
+      const size = Math.max(280, Math.min(width, 800));
+      const h = aspectRatio === '4:5' ? size * 1.25 : size;
+      setDimensions({ width: size, height: h });
     });
 
     resizeObserver.observe(containerRef.current);
     return () => resizeObserver.disconnect();
-  }, []);
+  }, [aspectRatio]);
+
+  // Adjust immediately when aspectRatio prop changes
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const width = containerRef.current.clientWidth;
+    const size = Math.max(280, Math.min(width, 800));
+    const h = aspectRatio === '4:5' ? size * 1.25 : size;
+    setDimensions({ width: size, height: h });
+  }, [aspectRatio]);
 
   // Initialize or re-create grid when dimensions or structural settings change
   const initializeGrid = (width: number, height: number) => {
     const { cols, rows } = settings;
     const padding = 40; // canvas padding
     const gridW = width - padding * 2;
-    const gridH = height - padding * 2;
+    const gridH = width - padding * 2; // Always keep grid square based on width!
     
     const colStep = cols > 1 ? gridW / (cols - 1) : gridW;
     const rowStep = rows > 1 ? gridH / (rows - 1) : gridH;
+
+    const offsetY = (height - width) / 2; // Center the square grid vertically inside the 4:5 rectangle
 
     const points: GridPoint[][] = [];
     for (let c = 0; c < cols; c++) {
       points[c] = [];
       for (let r = 0; r < rows; r++) {
         const x0 = padding + c * colStep;
-        const y0 = padding + r * rowStep;
+        const y0 = padding + r * rowStep + offsetY;
         
         points[c][r] = {
           x0,
@@ -239,6 +252,52 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
                 waveDx = sX + nX;
                 waveDy = sY + nY;
                 break;
+              case 'neural': {
+                const cx = dimensions.width / 2;
+                const cy = dimensions.height / 2;
+                const dist1 = Math.sqrt((p.x0 - cx * 0.6) ** 2 + (p.y0 - cy * 0.8) ** 2) || 1;
+                const dist2 = Math.sqrt((p.x0 - cx * 1.4) ** 2 + (p.y0 - cy * 1.2) ** 2) || 1;
+                waveDx = (Math.sin(dist1 * frequency * 0.25 - time * 2) / (1 + dist1 * 0.003) + Math.cos(dist2 * frequency * 0.35 + time) / (1 + dist2 * 0.003)) * amplitude * 1.3;
+                waveDy = (Math.cos(dist1 * frequency * 0.25 - time * 1.5) / (1 + dist1 * 0.003) + Math.sin(dist2 * frequency * 0.45 - time) / (1 + dist2 * 0.003)) * amplitude * 1.3;
+                break;
+              }
+              case 'bird': {
+                const flightPath = Math.sin(p.x0 * frequency * 0.05 + time * 1.5);
+                const wingFlap = Math.sin(time * 4 + p.x0 * 0.08) * Math.cos(p.y0 * 0.08);
+                waveDx = (flightPath * 0.6 + wingFlap * 0.4) * amplitude * 1.4;
+                waveDy = (Math.cos(p.x0 * frequency * 0.05 + time * 1.2) * 0.6 + Math.sin(time * 4.5 + p.y0 * 0.1) * 0.4) * amplitude * 1.4;
+                break;
+              }
+              case 'butterfly': {
+                const cx = dimensions.width / 2;
+                const dx = Math.abs(p.x0 - cx);
+                const flutter = Math.sin(time * 5.5 + dx * frequency * 0.12) * Math.exp(-dx * 0.004);
+                waveDx = (p.x0 < cx ? -1 : 1) * flutter * amplitude * 1.5;
+                waveDy = Math.cos(time * 3 + p.y0 * frequency * 0.08) * flutter * amplitude * 1.0;
+                break;
+              }
+              case 'wind_currents': {
+                const windSpeed = time * 2.0;
+                const eddy = Math.sin(p.x0 * frequency * 0.05 - windSpeed) * Math.cos(p.y0 * frequency * 0.05 + windSpeed * 0.5);
+                waveDx = (1.5 + eddy) * amplitude * 0.7;
+                waveDy = Math.sin(p.x0 * frequency * 0.03 + windSpeed) * amplitude * 0.5;
+                break;
+              }
+              case 'river_flow': {
+                const flowSpeed = time * 2.5;
+                const ripple = Math.sin(p.y0 * frequency * 0.08 - flowSpeed) * Math.cos(p.x0 * frequency * 0.04);
+                waveDx = ripple * amplitude * 0.8;
+                waveDy = (1.2 + Math.sin(flowSpeed + p.x0 * 0.01)) * amplitude * 0.6;
+                break;
+              }
+              case 'leaves_fall': {
+                const driftTime = time * 1.8;
+                const fallY = Math.sin(driftTime + p.y0 * 0.02) * amplitude * 0.4;
+                const swayX = Math.cos(driftTime + p.y0 * frequency * 0.06) * amplitude * 1.2;
+                waveDx = swayX;
+                waveDy = (1.0 + Math.abs(fallY)) * amplitude * 0.6;
+                break;
+              }
             }
           }
 
@@ -325,77 +384,180 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
         }
       }
 
-      // 5. Draw lines with high performance paths
+      // 5. Draw lines/points/text with high performance paths
       ctx.lineWidth = settings.strokeWidth;
       ctx.strokeStyle = strokeColor;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      // Horizontal lines
-      if (settings.showHorizontalLines) {
-        for (let r = 0; r < rows; r++) {
+      if (settings.renderMode === 'lines') {
+        // Horizontal lines
+        if (settings.showHorizontalLines) {
+          for (let r = 0; r < rows; r++) {
+            ctx.beginPath();
+            ctx.moveTo(points[0][r].x, points[0][r].y);
+            for (let c = 1; c < cols; c++) {
+              ctx.lineTo(points[c][r].x, points[c][r].y);
+            }
+            ctx.stroke();
+          }
+        }
+
+        // Vertical lines
+        if (settings.showVerticalLines) {
+          for (let c = 0; c < cols; c++) {
+            ctx.beginPath();
+            ctx.moveTo(points[c][0].x, points[c][0].y);
+            for (let r = 1; r < rows; r++) {
+              ctx.lineTo(points[c][r].x, points[c][r].y);
+            }
+            ctx.stroke();
+          }
+        }
+
+        // Diagonal lines (triangular mesh looks beautiful)
+        if (settings.diagonalLines !== 'none') {
           ctx.beginPath();
-          ctx.moveTo(points[0][r].x, points[0][r].y);
-          for (let c = 1; c < cols; c++) {
-            ctx.lineTo(points[c][r].x, points[c][r].y);
+          for (let c = 0; c < cols - 1; c++) {
+            for (let r = 0; r < rows - 1; r++) {
+              const pTL = points[c][r];
+              const pTR = points[c + 1][r];
+              const pBL = points[c][r + 1];
+              const pBR = points[c + 1][r + 1];
+
+              if (settings.diagonalLines === 'left' || settings.diagonalLines === 'both') {
+                ctx.moveTo(pTL.x, pTL.y);
+                ctx.lineTo(pBR.x, pBR.y);
+              }
+              if (settings.diagonalLines === 'right' || settings.diagonalLines === 'both') {
+                ctx.moveTo(pTR.x, pTR.y);
+                ctx.lineTo(pBL.x, pBL.y);
+              }
+            }
           }
           ctx.stroke();
         }
-      }
 
-      // Vertical lines
-      if (settings.showVerticalLines) {
-        for (let c = 0; c < cols; c++) {
-          ctx.beginPath();
-          ctx.moveTo(points[c][0].x, points[c][0].y);
-          for (let r = 1; r < rows; r++) {
-            ctx.lineTo(points[c][r].x, points[c][r].y);
-          }
-          ctx.stroke();
-        }
-      }
-
-      // Diagonal lines (triangular mesh looks beautiful)
-      if (settings.diagonalLines !== 'none') {
-        ctx.beginPath();
-        for (let c = 0; c < cols - 1; c++) {
-          for (let r = 0; r < rows - 1; r++) {
-            const pTL = points[c][r];
-            const pTR = points[c + 1][r];
-            const pBL = points[c][r + 1];
-            const pBR = points[c + 1][r + 1];
-
-            if (settings.diagonalLines === 'left' || settings.diagonalLines === 'both') {
-              ctx.moveTo(pTL.x, pTL.y);
-              ctx.lineTo(pBR.x, pBR.y);
-            }
-            if (settings.diagonalLines === 'right' || settings.diagonalLines === 'both') {
-              ctx.moveTo(pTR.x, pTR.y);
-              ctx.lineTo(pBL.x, pBL.y);
+        // Draw connection intersections as points/nodes
+        if (settings.showPoints && settings.pointSize > 0) {
+          ctx.fillStyle = pointColor;
+          for (let c = 0; c < cols; c++) {
+            for (let r = 0; r < rows; r++) {
+              ctx.beginPath();
+              ctx.arc(points[c][r].x, points[c][r].y, settings.pointSize, 0, Math.PI * 2);
+              ctx.fill();
             }
           }
         }
-        ctx.stroke();
-      }
-
-      // Draw connection intersections as points/nodes
-      if (settings.showPoints && settings.pointSize > 0) {
+      } else if (settings.renderMode === 'points') {
+        // Pure points rendering (clean, modern dots)
         ctx.fillStyle = pointColor;
+        const radius = Math.max(2, settings.pointSize);
         for (let c = 0; c < cols; c++) {
           for (let r = 0; r < rows; r++) {
             ctx.beginPath();
-            ctx.arc(points[c][r].x, points[c][r].y, settings.pointSize, 0, Math.PI * 2);
+            ctx.arc(points[c][r].x, points[c][r].y, radius, 0, Math.PI * 2);
             ctx.fill();
+          }
+        }
+      } else if (settings.renderMode === 'text') {
+        // Generative text typographic rendering
+        ctx.fillStyle = strokeColor;
+        const fSize = settings.textSize || 12;
+        ctx.font = `bold ${fSize}px "JetBrains Mono", monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        const txt = settings.customText || 'sappy.error';
+        for (let c = 0; c < cols; c++) {
+          for (let r = 0; r < rows; r++) {
+            const charIndex = (c + r * cols) % txt.length;
+            const char = txt.charAt(charIndex);
+            ctx.fillText(char, points[c][r].x, points[c][r].y);
+          }
+        }
+      } else if (settings.renderMode === 'cad-people') {
+        // Vector AutoCAD-style plan architectural human figures
+        for (let c = 0; c < cols; c++) {
+          for (let r = 0; r < rows; r++) {
+            const p = points[c][r];
+            const dx = p.x - p.x0;
+            const dy = p.y - p.y0;
+            let angle = Math.atan2(dy, dx);
+            if (Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1) {
+              angle = ((c * 17 + r * 23) % 360) * Math.PI / 180;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(angle);
+            ctx.lineWidth = Math.max(1, settings.strokeWidth * 0.85);
+            ctx.strokeStyle = strokeColor;
+            ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(18, 18, 18, 0.03)';
+
+            const baseSize = Math.max(10, settings.pointSize * 2.4);
+            const variant = (c + r) % 3;
+
+            if (variant === 0) {
+              // Variant A: Standing standard CAD plan figure
+              // Torso
+              ctx.beginPath();
+              ctx.ellipse(0, 0, baseSize * 0.9, baseSize * 0.45, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+              // Head
+              ctx.beginPath();
+              ctx.arc(0, 0, baseSize * 0.28, 0, Math.PI * 2);
+              ctx.fillStyle = isDark ? '#1a1a1a' : '#ffffff';
+              ctx.fill();
+              ctx.stroke();
+            } else if (variant === 1) {
+              // Variant B: Walking plan figure (skewed shoulders, holding small dynamic item)
+              ctx.beginPath();
+              ctx.ellipse(0, 0, baseSize * 0.95, baseSize * 0.4, 0.15, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+              // Head
+              ctx.beginPath();
+              ctx.arc(baseSize * 0.08, 0, baseSize * 0.26, 0, Math.PI * 2);
+              ctx.fillStyle = isDark ? '#1a1a1a' : '#ffffff';
+              ctx.fill();
+              ctx.stroke();
+              // Arm attachment / shoulder line
+              ctx.beginPath();
+              ctx.arc(-baseSize * 0.6, baseSize * 0.25, baseSize * 0.1, 0, Math.PI * 2);
+              ctx.stroke();
+            } else {
+              // Variant C: Figure with backpack / hat
+              // Backpack
+              ctx.beginPath();
+              ctx.rect(-baseSize * 0.5, -baseSize * 0.35, baseSize * 0.4, baseSize * 0.7);
+              ctx.fill();
+              ctx.stroke();
+              // Shoulders
+              ctx.beginPath();
+              ctx.ellipse(0, 0, baseSize * 0.85, baseSize * 0.42, 0, 0, Math.PI * 2);
+              ctx.stroke();
+              // Head / Hat
+              ctx.beginPath();
+              ctx.arc(baseSize * 0.05, 0, baseSize * 0.3, 0, Math.PI * 2);
+              ctx.fillStyle = isDark ? '#1a1a1a' : '#ffffff';
+              ctx.fill();
+              ctx.stroke();
+            }
+            ctx.restore();
           }
         }
       }
 
-      // Minimalist sappy.error signature in bottom-right corner
-      ctx.font = '600 10px "JetBrains Mono", monospace';
-      ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(18, 18, 18, 0.4)';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText('sappy.error', dimensions.width - 15, dimensions.height - 15);
+      if (settings.includeSignature) {
+        // Minimalist sappy.error signature in bottom-right corner
+        ctx.font = '600 10px "JetBrains Mono", monospace';
+        ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(18, 18, 18, 0.4)';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('sappy.error', dimensions.width - 15, dimensions.height - 15);
+      }
 
       // Rotate last mouse positions to measure drag speed vectors
       lastMousePosRef.current = { ...mousePosRef.current };
@@ -490,9 +652,14 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
     let targetH = dimensions.height * multiplier;
     let offsetY = 0;
 
-    if (aspect === '4:5') {
+    const isPreview45 = (dimensions.height > dimensions.width);
+    if (aspect === '4:5' && !isPreview45) {
       targetH = targetW * 1.25;
       offsetY = (targetH - targetW) / 2;
+    } else if (aspect === '1:1' && isPreview45) {
+      targetH = targetW;
+      const previewOffsetY = (dimensions.height - dimensions.width) / 2;
+      offsetY = -previewOffsetY * multiplier;
     }
 
     const tempCanvas = document.createElement('canvas');
@@ -548,79 +715,173 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
       };
     };
 
-    // Horizontal
-    if (settings.showHorizontalLines) {
-      for (let r = 0; r < rows; r++) {
+    if (settings.renderMode === 'lines') {
+      // Horizontal
+      if (settings.showHorizontalLines) {
+        for (let r = 0; r < rows; r++) {
+          tempCtx.beginPath();
+          const start = getP(0, r);
+          tempCtx.moveTo(start.x, start.y);
+          for (let c = 1; c < cols; c++) {
+            const pt = getP(c, r);
+            tempCtx.lineTo(pt.x, pt.y);
+          }
+          tempCtx.stroke();
+        }
+      }
+
+      // Vertical
+      if (settings.showVerticalLines) {
+        for (let c = 0; c < cols; c++) {
+          tempCtx.beginPath();
+          const start = getP(c, 0);
+          tempCtx.moveTo(start.x, start.y);
+          for (let r = 1; r < rows; r++) {
+            const pt = getP(c, r);
+            tempCtx.lineTo(pt.x, pt.y);
+          }
+          tempCtx.stroke();
+        }
+      }
+
+      // Diagonals
+      if (settings.diagonalLines !== 'none') {
         tempCtx.beginPath();
-        const start = getP(0, r);
-        tempCtx.moveTo(start.x, start.y);
-        for (let c = 1; c < cols; c++) {
-          const pt = getP(c, r);
-          tempCtx.lineTo(pt.x, pt.y);
+        for (let c = 0; c < cols - 1; c++) {
+          for (let r = 0; r < rows - 1; r++) {
+            const pTL = getP(c, r);
+            const pTR = getP(c + 1, r);
+            const pBL = getP(c, r + 1);
+            const pBR = getP(c + 1, r + 1);
+
+            if (settings.diagonalLines === 'left' || settings.diagonalLines === 'both') {
+              tempCtx.moveTo(pTL.x, pTL.y);
+              tempCtx.lineTo(pBR.x, pBR.y);
+            }
+            if (settings.diagonalLines === 'right' || settings.diagonalLines === 'both') {
+              tempCtx.moveTo(pTR.x, pTR.y);
+              tempCtx.lineTo(pBL.x, pBL.y);
+            }
+          }
         }
         tempCtx.stroke();
       }
-    }
 
-    // Vertical
-    if (settings.showVerticalLines) {
-      for (let c = 0; c < cols; c++) {
-        tempCtx.beginPath();
-        const start = getP(c, 0);
-        tempCtx.moveTo(start.x, start.y);
-        for (let r = 1; r < rows; r++) {
-          const pt = getP(c, r);
-          tempCtx.lineTo(pt.x, pt.y);
-        }
-        tempCtx.stroke();
-      }
-    }
-
-    // Diagonals
-    if (settings.diagonalLines !== 'none') {
-      tempCtx.beginPath();
-      for (let c = 0; c < cols - 1; c++) {
-        for (let r = 0; r < rows - 1; r++) {
-          const pTL = getP(c, r);
-          const pTR = getP(c + 1, r);
-          const pBL = getP(c, r + 1);
-          const pBR = getP(c + 1, r + 1);
-
-          if (settings.diagonalLines === 'left' || settings.diagonalLines === 'both') {
-            tempCtx.moveTo(pTL.x, pTL.y);
-            tempCtx.lineTo(pBR.x, pBR.y);
-          }
-          if (settings.diagonalLines === 'right' || settings.diagonalLines === 'both') {
-            tempCtx.moveTo(pTR.x, pTR.y);
-            tempCtx.lineTo(pBL.x, pBL.y);
+      // Points
+      if (settings.showPoints && settings.pointSize > 0) {
+        tempCtx.fillStyle = pointColor;
+        for (let c = 0; c < cols; c++) {
+          for (let r = 0; r < rows; r++) {
+            const pt = getP(c, r);
+            tempCtx.beginPath();
+            tempCtx.arc(pt.x, pt.y, settings.pointSize * multiplier, 0, Math.PI * 2);
+            tempCtx.fill();
           }
         }
       }
-      tempCtx.stroke();
-    }
-
-    // Points
-    if (settings.showPoints && settings.pointSize > 0) {
+    } else if (settings.renderMode === 'points') {
       tempCtx.fillStyle = pointColor;
+      const radius = Math.max(2, settings.pointSize) * multiplier;
       for (let c = 0; c < cols; c++) {
         for (let r = 0; r < rows; r++) {
           const pt = getP(c, r);
           tempCtx.beginPath();
-          tempCtx.arc(pt.x, pt.y, settings.pointSize * multiplier, 0, Math.PI * 2);
+          tempCtx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
           tempCtx.fill();
+        }
+      }
+    } else if (settings.renderMode === 'text') {
+      tempCtx.fillStyle = strokeColor;
+      const fSize = (settings.textSize || 12) * multiplier;
+      tempCtx.font = `bold ${fSize}px "JetBrains Mono", monospace`;
+      tempCtx.textAlign = 'center';
+      tempCtx.textBaseline = 'middle';
+      
+      const txt = settings.customText || 'sappy.error';
+      for (let c = 0; c < cols; c++) {
+        for (let r = 0; r < rows; r++) {
+          const pt = getP(c, r);
+          const charIndex = (c + r * cols) % txt.length;
+          const char = txt.charAt(charIndex);
+          tempCtx.fillText(char, pt.x, pt.y);
+        }
+      }
+    } else if (settings.renderMode === 'cad-people') {
+      // High-resolution CAD plan people
+      for (let c = 0; c < cols; c++) {
+        for (let r = 0; r < rows; r++) {
+          const pt = getP(c, r);
+          const p = points[c][r];
+          const dx = p.x - p.x0;
+          const dy = p.y - p.y0;
+          let angle = Math.atan2(dy, dx);
+          if (Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1) {
+            angle = ((c * 17 + r * 23) % 360) * Math.PI / 180;
+          }
+
+          tempCtx.save();
+          tempCtx.translate(pt.x, pt.y);
+          tempCtx.rotate(angle);
+          tempCtx.lineWidth = Math.max(1, settings.strokeWidth * multiplier * 0.85);
+          tempCtx.strokeStyle = strokeColor;
+          tempCtx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(18, 18, 18, 0.03)';
+
+          const baseSize = Math.max(10, settings.pointSize * 2.4) * multiplier;
+          const variant = (c + r) % 3;
+
+          if (variant === 0) {
+            tempCtx.beginPath();
+            tempCtx.ellipse(0, 0, baseSize * 0.9, baseSize * 0.45, 0, 0, Math.PI * 2);
+            tempCtx.fill();
+            tempCtx.stroke();
+            tempCtx.beginPath();
+            tempCtx.arc(0, 0, baseSize * 0.28, 0, Math.PI * 2);
+            tempCtx.fillStyle = isDark ? '#1a1a1a' : '#ffffff';
+            tempCtx.fill();
+            tempCtx.stroke();
+          } else if (variant === 1) {
+            tempCtx.beginPath();
+            tempCtx.ellipse(0, 0, baseSize * 0.95, baseSize * 0.4, 0.15, 0, Math.PI * 2);
+            tempCtx.fill();
+            tempCtx.stroke();
+            tempCtx.beginPath();
+            tempCtx.arc(baseSize * 0.08, 0, baseSize * 0.26, 0, Math.PI * 2);
+            tempCtx.fillStyle = isDark ? '#1a1a1a' : '#ffffff';
+            tempCtx.fill();
+            tempCtx.stroke();
+            tempCtx.beginPath();
+            tempCtx.arc(-baseSize * 0.6, baseSize * 0.25, baseSize * 0.1, 0, Math.PI * 2);
+            tempCtx.stroke();
+          } else {
+            tempCtx.beginPath();
+            tempCtx.rect(-baseSize * 0.5, -baseSize * 0.35, baseSize * 0.4, baseSize * 0.7);
+            tempCtx.fill();
+            tempCtx.stroke();
+            tempCtx.beginPath();
+            tempCtx.ellipse(0, 0, baseSize * 0.85, baseSize * 0.42, 0, 0, Math.PI * 2);
+            tempCtx.stroke();
+            tempCtx.beginPath();
+            tempCtx.arc(baseSize * 0.05, 0, baseSize * 0.3, 0, Math.PI * 2);
+            tempCtx.fillStyle = isDark ? '#1a1a1a' : '#ffffff';
+            tempCtx.fill();
+            tempCtx.stroke();
+          }
+          tempCtx.restore();
         }
       }
     }
 
-    // Draw minimalist signature "sappy.error" in bottom-right corner
-    const sigText = 'sappy.error';
-    tempCtx.font = `600 ${Math.max(12, multiplier * 11)}px "JetBrains Mono", monospace`;
-    tempCtx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.45)' : 'rgba(18, 18, 18, 0.45)';
-    tempCtx.textAlign = 'right';
-    tempCtx.textBaseline = 'bottom';
-    
-    const margin = Math.max(15, multiplier * 20);
-    tempCtx.fillText(sigText, targetW - margin, targetH - margin);
+    // Draw minimalist signature "sappy.error" in bottom-right corner if enabled
+    if (settings.includeSignature) {
+      const sigText = 'sappy.error';
+      tempCtx.font = `600 ${Math.max(12, multiplier * 11)}px "JetBrains Mono", monospace`;
+      tempCtx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.45)' : 'rgba(18, 18, 18, 0.45)';
+      tempCtx.textAlign = 'right';
+      tempCtx.textBaseline = 'bottom';
+      
+      const margin = Math.max(15, multiplier * 20);
+      tempCtx.fillText(sigText, targetW - margin, targetH - margin);
+    }
 
     return tempCanvas.toDataURL('image/png');
   };
@@ -657,7 +918,7 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
         <div className={`absolute bottom-4 left-4 font-mono text-[10px] tracking-widest pointer-events-none select-none transition-opacity duration-300 ${
           settings.darkTheme ? 'text-white/20' : 'text-neutral-400'
         }`}>
-          GRID ART ENGINE · CLICK & DRAG
+          CLICK & DRAG
         </div>
       </div>
     </div>

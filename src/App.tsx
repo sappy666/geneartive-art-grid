@@ -27,7 +27,7 @@ import {
   FileDown,
   Pencil
 } from 'lucide-react';
-import { ArtSettings, SavedConfig, ExportResolution, InteractionMode, DistortionType } from './types';
+import { ArtSettings, SavedConfig, SavedCreation, ExportResolution, InteractionMode, DistortionType } from './types';
 import { ArtCanvas, ArtCanvasRef } from './components/ArtCanvas';
 import { DEFAULT_PRESETS } from './utils/presets';
 
@@ -44,7 +44,9 @@ export default function App() {
   const [zenMode, setZenMode] = useState(false);
   const [selectedPresetId, setSelectedPresetId] = useState(DEFAULT_PRESETS[0].id);
   const [savedConfigs, setSavedConfigs] = useState<SavedConfig[]>([]);
+  const [savedCreations, setSavedCreations] = useState<SavedCreation[]>([]);
   const [newConfigName, setNewConfigName] = useState('');
+  const [newCreationName, setNewCreationName] = useState('');
   const [loadedConfigId, setLoadedConfigId] = useState<string | null>(null);
   const [editingConfigId, setEditingConfigId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
@@ -82,15 +84,19 @@ export default function App() {
     }
   }, [settings.darkTheme]);
 
-  // Load custom configs from local storage
+  // Load custom configs & creations from local storage
   useEffect(() => {
     try {
       const stored = localStorage.getItem('generative_grid_custom_configs');
       if (stored) {
         setSavedConfigs(JSON.parse(stored));
       }
+      const storedCreations = localStorage.getItem('generative_grid_saved_creations');
+      if (storedCreations) {
+        setSavedCreations(JSON.parse(storedCreations));
+      }
     } catch (e) {
-      console.error('Error loading custom configurations from localStorage', e);
+      console.error('Error loading custom configurations or creations from localStorage', e);
     }
   }, []);
 
@@ -224,7 +230,7 @@ export default function App() {
     triggerToast(`Ajuste "${name}" eliminado`, 'info');
   };
 
-  // High-resolution image export
+  // High-resolution image export with custom padded index filename format requested: sappy.error.01, 02...
   const handleExport = () => {
     setIsExporting(true);
     triggerToast('Generando render de alta resolución...', 'info');
@@ -238,19 +244,21 @@ export default function App() {
 
         const dataUrl = canvasRef.current?.exportHighRes(multiplier, exportAspect);
         if (dataUrl) {
+          // Retrieve and increment export index
+          const counterStr = localStorage.getItem('sappy_error_export_counter') || '1';
+          const counterVal = parseInt(counterStr) || 1;
+          localStorage.setItem('sappy_error_export_counter', (counterVal + 1).toString());
+
+          const paddedNum = String(counterVal).padStart(2, '0');
+          const fileName = `sappy.error.${paddedNum}.png`;
+
           const link = document.createElement('a');
-          const timeStamp = new Date().toISOString().slice(0, 10);
-          const nameClean = (DEFAULT_PRESETS.find(p => p.id === selectedPresetId)?.name || 'arte-generativo')
-            .toLowerCase()
-            .replace(/\s+/g, '-');
-          
-          const aspectClean = exportAspect.replace(':', '-');
-          link.download = `cuadricula_${nameClean}_${exportRes}_${aspectClean}_${timeStamp}.png`;
+          link.download = fileName;
           link.href = dataUrl;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-          triggerToast('¡Imagen descargada con éxito!', 'success');
+          triggerToast(`¡Imagen ${fileName} descargada con éxito!`, 'success');
         } else {
           triggerToast('Error al exportar el lienzo', 'error');
         }
@@ -261,6 +269,56 @@ export default function App() {
         setIsExporting(false);
       }
     }, 400); // short timeout to let state update & UI react
+  };
+
+  // Record/Grab the current creation with snapshot & restore capability
+  const handleSaveCreation = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const name = newCreationName.trim() || `Creación ${String(savedCreations.length + 1).padStart(2, '0')}`;
+    
+    try {
+      // Capture at 1.5x for reasonable thumbnail file-size in LocalStorage
+      const thumbnailDataUrl = canvasRef.current?.exportHighRes(1.5, exportAspect);
+      if (!thumbnailDataUrl) {
+        triggerToast('Error al capturar la vista previa', 'error');
+        return;
+      }
+      
+      const newCreation: SavedCreation = {
+        id: 'creation_' + Date.now(),
+        name,
+        dataUrl: thumbnailDataUrl,
+        createdAt: new Date().toLocaleDateString('es-ES', {
+          hour: '2-digit',
+          minute: '2-digit',
+          day: 'numeric',
+          month: 'short'
+        }),
+        settings: { ...settings }
+      };
+
+      const updated = [newCreation, ...savedCreations];
+      setSavedCreations(updated);
+      localStorage.setItem('generative_grid_saved_creations', JSON.stringify(updated));
+      setNewCreationName('');
+      triggerToast('¡Obra guardada en tu galería local!', 'success');
+    } catch (err) {
+      console.error(err);
+      triggerToast('No se pudo grabar la creación', 'error');
+    }
+  };
+
+  const handleDeleteCreation = (id: string, name: string) => {
+    const updated = savedCreations.filter(c => c.id !== id);
+    setSavedCreations(updated);
+    localStorage.setItem('generative_grid_saved_creations', JSON.stringify(updated));
+    triggerToast(`Eliminada de galería: ${name}`, 'success');
+  };
+
+  const handleLoadCreation = (creation: SavedCreation) => {
+    setSettings({ ...creation.settings });
+    setSelectedPresetId('custom');
+    triggerToast(`Restaurada obra: ${creation.name}`, 'info');
   };
 
   // Export JSON string
@@ -461,6 +519,7 @@ export default function App() {
             <ArtCanvas 
               ref={canvasRef} 
               settings={settings} 
+              aspectRatio={exportAspect}
             />
 
             {/* Canvas Footer Tips */}
@@ -584,6 +643,78 @@ export default function App() {
                     Determina la densidad, grosor y estilo geométrico de las líneas de tu obra.
                   </p>
                 </div>
+
+                {/* Render Mode Selection */}
+                <div className="space-y-2">
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500 block">
+                    Modo de Representación (Estilo)
+                  </span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[
+                      { id: 'lines', label: 'Líneas', desc: 'Cuadrícula tradicional' },
+                      { id: 'points', label: 'Puntos', desc: 'Nodos flotantes puros' },
+                      { id: 'text', label: 'Texto', desc: 'Patrón tipográfico' },
+                      { id: 'cad-people', label: 'Personas CAD', desc: 'Siluetas arquitectónicas en planta' }
+                    ].map((mode) => (
+                      <button
+                        key={mode.id}
+                        onClick={() => updateSetting('renderMode', mode.id as any)}
+                        className={`py-2 text-center rounded-lg border text-[10px] font-mono transition-all duration-300 cursor-pointer ${
+                          settings.renderMode === mode.id
+                            ? settings.darkTheme
+                              ? 'bg-white border-white text-black font-bold shadow-sm'
+                              : 'bg-neutral-900 border-neutral-850 text-white font-bold'
+                            : settings.darkTheme
+                            ? 'border-white/5 text-zinc-400 hover:border-white/10 hover:text-white bg-transparent'
+                            : 'border-neutral-200 text-neutral-400 hover:border-neutral-300 bg-transparent'
+                        }`}
+                        title={mode.desc}
+                      >
+                        {mode.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Conditional Text Settings */}
+                {settings.renderMode === 'text' && (
+                  <div className="space-y-3.5 p-3.5 rounded-xl border border-dashed animate-fade-in bg-zinc-500/5 border-zinc-500/20">
+                    <div>
+                      <div className="flex justify-between font-mono text-[9px] uppercase tracking-widest mb-1.5 text-zinc-500">
+                        <span>Texto Personalizado</span>
+                        <span className="text-[9px] text-zinc-400">({(settings.customText || '').length} carac.)</span>
+                      </div>
+                      <input
+                        type="text"
+                        maxLength={25}
+                        value={settings.customText || ''}
+                        onChange={(e) => updateSetting('customText', e.target.value)}
+                        placeholder="Escribe tu texto..."
+                        className={`w-full text-xs font-mono px-3 py-2 rounded-lg border outline-none bg-transparent transition-all ${
+                          settings.darkTheme 
+                            ? 'border-white/10 text-white focus:border-white/20 focus:bg-zinc-950' 
+                            : 'border-neutral-200 text-neutral-800 focus:border-neutral-400 focus:bg-white shadow-sm'
+                        }`}
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between font-mono text-[9px] uppercase tracking-widest mb-1.5 text-zinc-500">
+                        <span>Tamaño de la Fuente</span>
+                        <span className={`font-bold ${settings.darkTheme ? 'text-zinc-300' : 'text-zinc-800'}`}>{settings.textSize || 12} px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="6"
+                        max="24"
+                        step="1"
+                        value={settings.textSize || 12}
+                        onChange={(e) => updateSetting('textSize', parseInt(e.target.value))}
+                        className="w-full h-1 rounded-lg appearance-none cursor-ew-resize bg-neutral-200 dark:bg-zinc-800 accent-neutral-900 dark:accent-white transition-all"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* Grid Density Rows & Columns */}
                 <div className="space-y-3.5">
@@ -766,7 +897,13 @@ export default function App() {
                       { id: 'noise', label: 'Ruido FBM' },
                       { id: 'fold', label: 'Pliegues' },
                       { id: 'vortex', label: 'Vórtice' },
-                      { id: 'mixed', label: 'Mixto' }
+                      { id: 'mixed', label: 'Mixto' },
+                      { id: 'neural', label: 'Ondas Neuronales' },
+                      { id: 'bird', label: 'Vuelo de Pájaro' },
+                      { id: 'butterfly', label: 'Aleteo Mariposa' },
+                      { id: 'wind_currents', label: 'C. Viento 🍃' },
+                      { id: 'river_flow', label: 'Flujo Río 🌊' },
+                      { id: 'leaves_fall', label: 'Hojas Caídas 🍁' }
                     ].map(type => (
                       <button
                         key={type.id}
@@ -775,7 +912,7 @@ export default function App() {
                           settings.distortionType === type.id
                             ? settings.darkTheme
                               ? 'bg-white border-white text-black font-semibold'
-                              : 'bg-neutral-900 border-neutral-850 text-white'
+                              : 'bg-neutral-900 border-neutral-850 text-white font-bold'
                             : settings.darkTheme
                             ? 'border-white/5 bg-white/[0.01] text-zinc-400 hover:border-white/10 hover:text-zinc-200'
                             : 'border-neutral-200/60 text-neutral-400 hover:border-neutral-300'
@@ -1022,220 +1159,336 @@ export default function App() {
               </div>
             )}
 
-            {/* TAB 5: SAVED CONFIGS & SHARING */}
+            {/* TAB 5: SAVED CREATIONS, CONFIGS & SHARING */}
             {activeTab === 'saves' && (
-              <div className="space-y-5 animate-fade-in">
-                <div className="space-y-1">
-                  <h3 className="font-display font-semibold text-xs uppercase tracking-widest text-zinc-500">
-                    Ajustes Guardados de la Comunidad
-                  </h3>
-                  <p className={`text-xs leading-relaxed ${settings.darkTheme ? 'text-zinc-400' : 'text-neutral-500'}`}>
-                    Crea perfiles locales de tus combinaciones preferidas de deformación. Se guardan en el navegador de manera segura.
-                  </p>
-                </div>
-
-                {/* Edit Active Design Banner */}
-                {loadedConfigId && (() => {
-                  const activeConfig = savedConfigs.find(c => c.id === loadedConfigId);
-                  if (!activeConfig) return null;
-                  return (
-                    <div className={`p-3.5 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
-                      settings.darkTheme 
-                        ? 'bg-emerald-950/10 border-emerald-500/20 text-emerald-300' 
-                        : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                    }`}>
-                      <div className="space-y-0.5">
-                        <span className="font-display font-bold text-[10px] uppercase tracking-wider block">
-                          Editando Ajuste Activo
-                        </span>
-                        <p className="text-[11px] opacity-90 leading-relaxed">
-                          Estás modificando: <span className="font-bold">"{activeConfig.name}"</span>. Puedes actualizar este diseño o crear uno nuevo.
-                        </p>
-                      </div>
-                      <div className="flex gap-1.5 flex-shrink-0 w-full sm:w-auto justify-end">
-                        <button
-                          onClick={handleUpdateConfig}
-                          className={`px-3 py-1.5 rounded-lg font-mono text-[9px] uppercase tracking-widest font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                            settings.darkTheme
-                              ? 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-950/30'
-                              : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
-                          }`}
-                          title="Actualizar este ajuste con los parámetros actuales"
-                        >
-                          <Save className="w-3 h-3" />
-                          <span>Actualizar</span>
-                        </button>
-                        <button
-                          onClick={() => setLoadedConfigId(null)}
-                          className={`px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer ${
-                            settings.darkTheme
-                              ? 'border-white/10 text-zinc-400 hover:text-zinc-200 hover:bg-white/5 bg-transparent'
-                              : 'border-neutral-200 text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 bg-transparent'
-                          }`}
-                          title="Dejar de editar y permitir crear una copia nueva"
-                        >
-                          <span className="font-mono text-[9px] uppercase font-bold block">Nueva Copia</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Save configuration form */}
-                <form onSubmit={handleSaveConfig} className="space-y-2">
-                  <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500 block">
-                    {loadedConfigId ? 'Guardar como nueva configuración' : 'Guardar Configuración Actual'}
-                  </span>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Ej. Olas del Pacífico"
-                      value={newConfigName}
-                      onChange={(e) => setNewConfigName(e.target.value)}
-                      className={`flex-1 text-xs px-3.5 py-2.5 rounded-lg border outline-none bg-transparent transition-all ${
-                        settings.darkTheme 
-                          ? 'border-white/5 text-zinc-200 focus:border-white/20 bg-zinc-950' 
-                          : 'border-neutral-200 text-neutral-800 focus:border-neutral-400 bg-white shadow-sm'
-                      }`}
-                    />
-                    <button
-                      type="submit"
-                      className={`px-4 py-2.5 rounded-lg flex items-center justify-center font-mono text-[10px] uppercase tracking-wider font-semibold gap-1.5 transition-all cursor-pointer ${
-                        settings.darkTheme
-                          ? 'bg-white text-black hover:bg-zinc-200 shadow-lg shadow-black/20'
-                          : 'bg-neutral-900 text-white hover:bg-neutral-800'
-                      }`}
-                      id="save-config-submit-btn"
-                    >
-                      <Save className="w-3.5 h-3.5" />
-                      <span>{loadedConfigId ? 'Copiar' : 'Guardar'}</span>
-                    </button>
+              <div className="space-y-6 animate-fade-in pb-12">
+                {/* SECTION 1: GALERÍA DE OBRAS GRABADAS (SNAPSHOTS) */}
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <h3 className="font-display font-semibold text-xs uppercase tracking-widest text-zinc-500">
+                      Galería de Obras Grabadas
+                    </h3>
+                    <p className={`text-[11px] leading-relaxed ${settings.darkTheme ? 'text-zinc-400' : 'text-neutral-500'}`}>
+                      Graba una foto de tu creación actual con sus respectivos parámetros para poder reconstruirla en el futuro. Se guarda localmente.
+                    </p>
                   </div>
-                </form>
 
-                <hr className={settings.darkTheme ? 'border-white/5' : 'border-neutral-200/50'} />
+                  {/* Form to record/grab creation */}
+                  <form onSubmit={handleSaveCreation} className="space-y-2">
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500 block">
+                      Grabar Obra Actual
+                    </span>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Nombre de la obra (ej. Estalactitas)"
+                        value={newCreationName}
+                        onChange={(e) => setNewCreationName(e.target.value)}
+                        className={`flex-1 text-xs px-3.5 py-2.5 rounded-lg border outline-none bg-transparent transition-all ${
+                          settings.darkTheme 
+                            ? 'border-white/5 text-zinc-200 focus:border-white/20 bg-zinc-950' 
+                            : 'border-neutral-200 text-neutral-800 focus:border-neutral-400 bg-white shadow-sm'
+                        }`}
+                      />
+                      <button
+                        type="submit"
+                        className={`px-4 py-2.5 rounded-lg flex items-center justify-center font-mono text-[10px] uppercase tracking-wider font-semibold gap-1.5 transition-all cursor-pointer ${
+                          settings.darkTheme
+                            ? 'bg-white text-black hover:bg-zinc-200 shadow-lg shadow-black/20'
+                            : 'bg-neutral-900 text-white hover:bg-neutral-800'
+                        }`}
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        <span>Grabar</span>
+                      </button>
+                    </div>
+                  </form>
 
-                {/* Custom Saved List */}
-                <div className="space-y-3">
-                  <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500 block">
-                    Tus Diseños ({savedConfigs.length})
-                  </span>
-
-                  {savedConfigs.length === 0 ? (
+                  {/* Gallery Grid */}
+                  {savedCreations.length === 0 ? (
                     <div className={`p-6 text-center border border-dashed rounded-xl ${
                       settings.darkTheme ? 'border-white/5 text-zinc-600 bg-white/[0.01]' : 'border-neutral-200 text-neutral-400 bg-neutral-50/25'
                     }`}>
-                      <FolderOpen className="w-5 h-5 mx-auto mb-2 opacity-50 text-zinc-500" />
-                      <p className="font-mono text-[9px] uppercase tracking-wider text-zinc-500">No hay perfiles personalizados guardados</p>
+                      <Eye className="w-5 h-5 mx-auto mb-2 opacity-50 text-zinc-500" />
+                      <p className="font-mono text-[9px] uppercase tracking-wider text-zinc-500">No hay obras grabadas en tu galería</p>
                     </div>
                   ) : (
-                    <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
-                      {savedConfigs.map((item) => (
+                    <div className="grid grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-1">
+                      {savedCreations.map((creation) => (
                         <div
-                          key={item.id}
-                          className={`flex items-center justify-between p-3.5 rounded-lg border transition-all ${
-                            loadedConfigId === item.id
-                              ? settings.darkTheme
-                                ? 'border-emerald-500/30 bg-emerald-950/5 text-zinc-100'
-                                : 'border-emerald-300 bg-emerald-50/30 text-neutral-800'
-                              : settings.darkTheme 
-                                ? 'border-white/5 bg-zinc-950/30 text-zinc-300 hover:border-white/10' 
-                                : 'border-neutral-200 bg-white shadow-sm text-neutral-700 hover:border-neutral-300'
+                          key={creation.id}
+                          className={`group relative rounded-xl border overflow-hidden flex flex-col transition-all duration-300 ${
+                            settings.darkTheme
+                              ? 'border-white/5 bg-zinc-950/40 hover:border-white/10'
+                              : 'border-neutral-200 bg-white hover:border-neutral-300 shadow-sm'
                           }`}
                         >
-                          {editingConfigId === item.id ? (
-                            <div className="flex-1 flex items-center gap-2 mr-2">
-                              <input
-                                type="text"
-                                value={editingName}
-                                onChange={(e) => setEditingName(e.target.value)}
-                                className={`flex-1 text-xs px-2.5 py-1.5 rounded-lg border outline-none bg-transparent transition-all ${
-                                  settings.darkTheme 
-                                    ? 'border-white/20 text-zinc-200 focus:border-white/40 bg-zinc-950' 
-                                    : 'border-neutral-300 text-neutral-800 focus:border-neutral-400 bg-white shadow-sm'
-                                }`}
-                                autoFocus
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    handleRenameConfig(item.id);
-                                  } else if (e.key === 'Escape') {
-                                    setEditingConfigId(null);
-                                    setEditingName('');
-                                  }
-                                }}
-                              />
+                          {/* Image preview with aspect-square */}
+                          <div className="relative aspect-square overflow-hidden bg-neutral-900/10 dark:bg-black/40 flex items-center justify-center">
+                            <img
+                              src={creation.dataUrl}
+                              alt={creation.name}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                            {/* Overlay Controls */}
+                            <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2">
                               <button
-                                onClick={() => handleRenameConfig(item.id)}
-                                className="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded transition-colors cursor-pointer"
-                                title="Guardar nombre"
+                                onClick={() => handleLoadCreation(creation)}
+                                className="p-2 bg-white text-black rounded-lg hover:scale-105 transition-transform cursor-pointer"
+                                title="Cargar diseño"
                               >
-                                <Check className="w-3.5 h-3.5" />
+                                <Eye className="w-3.5 h-3.5" />
                               </button>
-                              <button
-                                onClick={() => {
-                                  setEditingConfigId(null);
-                                  setEditingName('');
-                                }}
-                                className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded transition-colors cursor-pointer"
-                                title="Cancelar"
+                              <a
+                                href={creation.dataUrl}
+                                download={`${creation.name}.png`}
+                                className="p-2 bg-zinc-900 text-white rounded-lg hover:scale-105 transition-transform cursor-pointer flex items-center justify-center"
+                                title="Descargar imagen"
                               >
-                                <span className="font-mono text-[10px] font-bold px-1">X</span>
+                                <FileDown className="w-3.5 h-3.5" />
+                              </a>
+                              <button
+                                onClick={() => handleDeleteCreation(creation.id, creation.name)}
+                                className="p-2 bg-rose-600 text-white rounded-lg hover:scale-105 transition-transform cursor-pointer"
+                                title="Eliminar"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
-                          ) : (
-                            <>
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className={`font-sans font-semibold text-xs uppercase tracking-wide ${
-                                    loadedConfigId === item.id ? 'text-emerald-500 dark:text-emerald-400' : ''
-                                  }`}>
-                                    {item.name}
-                                  </span>
-                                  <button
-                                    onClick={() => {
-                                      setEditingConfigId(item.id);
-                                      setEditingName(item.name);
-                                    }}
-                                    className="p-1 rounded opacity-50 hover:opacity-100 hover:bg-neutral-200 dark:hover:bg-zinc-800 transition-all cursor-pointer"
-                                    title="Renombrar ajuste"
-                                  >
-                                    <Pencil className="w-2.5 h-2.5 text-zinc-400" />
-                                  </button>
-                                </div>
-                                <span className="font-mono text-[9px] text-zinc-500 block">
-                                  Guardado: {item.createdAt}
-                                </span>
-                              </div>
-
-                              <div className="flex items-center gap-1.5">
-                                <button
-                                  onClick={() => handleLoadConfig(item)}
-                                  className={`px-2.5 py-1 text-[9px] font-mono uppercase tracking-wider rounded border transition-all cursor-pointer ${
-                                    loadedConfigId === item.id
-                                      ? settings.darkTheme
-                                        ? 'bg-emerald-500 border-emerald-500 text-black font-bold'
-                                        : 'bg-emerald-600 border-emerald-600 text-white font-bold shadow-sm'
-                                      : settings.darkTheme
-                                      ? 'border-white/10 hover:border-white text-zinc-300 hover:text-white bg-white/[0.02]'
-                                      : 'border-neutral-300 hover:border-neutral-800 text-neutral-600 hover:text-neutral-900 bg-neutral-50'
-                                  }`}
-                                >
-                                  {loadedConfigId === item.id ? 'Activo' : 'Cargar'}
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteConfig(item.id, item.name)}
-                                  className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded transition-colors cursor-pointer"
-                                  title="Eliminar perfiles"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </>
-                          )}
+                          </div>
+                          
+                          {/* Label info */}
+                          <div className="p-2 flex flex-col gap-0.5 border-t border-zinc-500/10">
+                            <span className="font-sans font-semibold text-[10px] uppercase tracking-wide truncate">
+                              {creation.name}
+                            </span>
+                            <span className="font-mono text-[8px] text-zinc-500 block">
+                              {creation.createdAt}
+                            </span>
+                          </div>
                         </div>
                       ))}
                     </div>
                   )}
+                </div>
+
+                <hr className={settings.darkTheme ? 'border-white/5' : 'border-neutral-200/50'} />
+
+                {/* SECTION 2: AJUSTES GUARDADOS DE PARÁMETROS */}
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <h3 className="font-display font-semibold text-xs uppercase tracking-widest text-zinc-500">
+                      Perfiles de Ajustes Técnicos
+                    </h3>
+                    <p className={`text-[11px] leading-relaxed ${settings.darkTheme ? 'text-zinc-400' : 'text-neutral-500'}`}>
+                      Guarda únicamente los deslizadores, ondas, y parámetros de interacción para replicar el movimiento exacto en otras redes.
+                    </p>
+                  </div>
+
+                  {/* Edit Active Design Banner */}
+                  {loadedConfigId && (() => {
+                    const activeConfig = savedConfigs.find(c => c.id === loadedConfigId);
+                    if (!activeConfig) return null;
+                    return (
+                      <div className={`p-3.5 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+                        settings.darkTheme 
+                          ? 'bg-emerald-950/10 border-emerald-500/20 text-emerald-300' 
+                          : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      }`}>
+                        <div className="space-y-0.5">
+                          <span className="font-display font-bold text-[10px] uppercase tracking-wider block">
+                            Editando Ajuste Activo
+                          </span>
+                          <p className="text-[11px] opacity-90 leading-relaxed">
+                            Estás modificando: <span className="font-bold">"{activeConfig.name}"</span>. Puedes actualizar este diseño o crear uno nuevo.
+                          </p>
+                        </div>
+                        <div className="flex gap-1.5 flex-shrink-0 w-full sm:w-auto justify-end">
+                          <button
+                            onClick={handleUpdateConfig}
+                            className={`px-3 py-1.5 rounded-lg font-mono text-[9px] uppercase tracking-widest font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                              settings.darkTheme
+                                ? 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-950/30'
+                                : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                            }`}
+                            title="Actualizar este ajuste con los parámetros actuales"
+                          >
+                            <Save className="w-3 h-3" />
+                            <span>Actualizar</span>
+                          </button>
+                          <button
+                            onClick={() => setLoadedConfigId(null)}
+                            className={`px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer ${
+                              settings.darkTheme
+                                ? 'border-white/10 text-zinc-400 hover:text-zinc-200 hover:bg-white/5 bg-transparent'
+                                : 'border-neutral-200 text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 bg-transparent'
+                            }`}
+                            title="Dejar de editar y permitir crear una copia nueva"
+                          >
+                            <span className="font-mono text-[9px] uppercase font-bold block">Nueva Copia</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Save configuration form */}
+                  <form onSubmit={handleSaveConfig} className="space-y-2">
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500 block">
+                      {loadedConfigId ? 'Guardar como nueva configuración' : 'Guardar Configuración Actual'}
+                    </span>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Ej. Olas del Pacífico"
+                        value={newConfigName}
+                        onChange={(e) => setNewConfigName(e.target.value)}
+                        className={`flex-1 text-xs px-3.5 py-2.5 rounded-lg border outline-none bg-transparent transition-all ${
+                          settings.darkTheme 
+                            ? 'border-white/5 text-zinc-200 focus:border-white/20 bg-zinc-950' 
+                            : 'border-neutral-200 text-neutral-800 focus:border-neutral-400 bg-white shadow-sm'
+                        }`}
+                      />
+                      <button
+                        type="submit"
+                        className={`px-4 py-2.5 rounded-lg flex items-center justify-center font-mono text-[10px] uppercase tracking-wider font-semibold gap-1.5 transition-all cursor-pointer ${
+                          settings.darkTheme
+                            ? 'bg-white text-black hover:bg-zinc-200 shadow-lg shadow-black/20'
+                            : 'bg-neutral-900 text-white hover:bg-neutral-800'
+                        }`}
+                        id="save-config-submit-btn"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        <span>{loadedConfigId ? 'Copiar' : 'Guardar'}</span>
+                      </button>
+                    </div>
+                  </form>
+
+                  <hr className={settings.darkTheme ? 'border-white/5' : 'border-neutral-200/50'} />
+
+                  {/* Custom Saved List */}
+                  <div className="space-y-3">
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500 block">
+                      Tus Perfiles Técnicos ({savedConfigs.length})
+                    </span>
+
+                    {savedConfigs.length === 0 ? (
+                      <div className={`p-6 text-center border border-dashed rounded-xl ${
+                        settings.darkTheme ? 'border-white/5 text-zinc-600 bg-white/[0.01]' : 'border-neutral-200 text-neutral-400 bg-neutral-50/25'
+                      }`}>
+                        <FolderOpen className="w-5 h-5 mx-auto mb-2 opacity-50 text-zinc-500" />
+                        <p className="font-mono text-[9px] uppercase tracking-wider text-zinc-500">No hay perfiles personalizados guardados</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
+                        {savedConfigs.map((item) => (
+                          <div
+                            key={item.id}
+                            className={`flex items-center justify-between p-3.5 rounded-lg border transition-all ${
+                              loadedConfigId === item.id
+                                ? settings.darkTheme
+                                  ? 'border-emerald-500/30 bg-emerald-950/5 text-zinc-100'
+                                  : 'border-emerald-300 bg-emerald-50/30 text-neutral-800'
+                                : settings.darkTheme 
+                                  ? 'border-white/5 bg-zinc-950/30 text-zinc-300 hover:border-white/10' 
+                                  : 'border-neutral-200 bg-white shadow-sm text-neutral-700 hover:border-neutral-300'
+                            }`}
+                          >
+                            {editingConfigId === item.id ? (
+                              <div className="flex-1 flex items-center gap-2 mr-2">
+                                <input
+                                  type="text"
+                                  value={editingName}
+                                  onChange={(e) => setEditingName(e.target.value)}
+                                  className={`flex-1 text-xs px-2.5 py-1.5 rounded-lg border outline-none bg-transparent transition-all ${
+                                    settings.darkTheme 
+                                      ? 'border-white/20 text-zinc-200 focus:border-white/40 bg-zinc-950' 
+                                      : 'border-neutral-300 text-neutral-800 focus:border-neutral-400 bg-white shadow-sm'
+                                  }`}
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      handleRenameConfig(item.id);
+                                    } else if (e.key === 'Escape') {
+                                      setEditingConfigId(null);
+                                      setEditingName('');
+                                    }
+                                  }}
+                                />
+                                <button
+                                  onClick={() => handleRenameConfig(item.id)}
+                                  className="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded transition-colors cursor-pointer"
+                                  title="Guardar nombre"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setEditingConfigId(null);
+                                    setEditingName('');
+                                  }}
+                                  className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded transition-colors cursor-pointer"
+                                  title="Cancelar"
+                                >
+                                  <span className="font-mono text-[10px] font-bold px-1">X</span>
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className={`font-sans font-semibold text-xs uppercase tracking-wide ${
+                                      loadedConfigId === item.id ? 'text-emerald-500 dark:text-emerald-400' : ''
+                                    }`}>
+                                      {item.name}
+                                    </span>
+                                    <button
+                                      onClick={() => {
+                                        setEditingConfigId(item.id);
+                                        setEditingName(item.name);
+                                      }}
+                                      className="p-1 rounded opacity-50 hover:opacity-100 hover:bg-neutral-200 dark:hover:bg-zinc-800 transition-all cursor-pointer"
+                                      title="Renombrar ajuste"
+                                    >
+                                      <Pencil className="w-2.5 h-2.5 text-zinc-400" />
+                                    </button>
+                                  </div>
+                                  <span className="font-mono text-[9px] text-zinc-500 block">
+                                    Guardado: {item.createdAt}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    onClick={() => handleLoadConfig(item)}
+                                    className={`px-2.5 py-1 text-[9px] font-mono uppercase tracking-wider rounded border transition-all cursor-pointer ${
+                                      loadedConfigId === item.id
+                                        ? settings.darkTheme
+                                          ? 'bg-emerald-500 border-emerald-500 text-black font-bold'
+                                          : 'bg-emerald-600 border-emerald-600 text-white font-bold shadow-sm'
+                                        : settings.darkTheme
+                                        ? 'border-white/10 hover:border-white text-zinc-300 hover:text-white bg-white/[0.02]'
+                                        : 'border-neutral-300 hover:border-neutral-800 text-neutral-600 hover:text-neutral-900 bg-neutral-50'
+                                    }`}
+                                  >
+                                    {loadedConfigId === item.id ? 'Activo' : 'Cargar'}
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteConfig(item.id, item.name)}
+                                    className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded transition-colors cursor-pointer"
+                                    title="Eliminar perfiles"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <hr className={settings.darkTheme ? 'border-white/5' : 'border-neutral-200/50'} />
@@ -1377,6 +1630,34 @@ export default function App() {
                       4:5 (RETRATO MARCO)
                     </button>
                   </div>
+                </div>
+
+                {/* Signature Toggle */}
+                <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
+                  settings.darkTheme ? 'border-white/5 bg-white/[0.01]' : 'border-neutral-200 bg-neutral-50/30'
+                }`}>
+                  <div className="space-y-0.5">
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500 block font-semibold">
+                      Firma sappy.error
+                    </span>
+                    <span className={`text-[10px] block leading-tight ${settings.darkTheme ? 'text-zinc-400' : 'text-neutral-500'}`}>
+                      Colocar firma en esquina inferior derecha.
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => updateSetting('includeSignature', !settings.includeSignature)}
+                    className={`w-10 h-5 rounded-full transition-all duration-300 relative flex-shrink-0 cursor-pointer ${
+                      settings.includeSignature 
+                        ? 'bg-neutral-900 dark:bg-white' 
+                        : 'bg-neutral-200 dark:bg-zinc-800'
+                    }`}
+                  >
+                    <div className={`w-3.5 h-3.5 rounded-full absolute top-0.5 transition-all duration-300 ${
+                      settings.includeSignature 
+                        ? 'left-5.5 bg-white dark:bg-black' 
+                        : 'left-1 bg-neutral-500'
+                    }`} />
+                  </button>
                 </div>
 
                 <button
