@@ -1044,10 +1044,12 @@ export default function App() {
                       { id: 'mixed', label: 'Mixto' },
                       { id: 'neural', label: 'Ondas Dinámicas' },
                       { id: 'bird', label: 'Vuelo de Pájaro' },
-                      { id: 'butterfly', label: 'Aleteo Mariposa' },
+                      { id: 'escher_stairs', label: 'Escaleras Escher' },
+                      { id: 'growing_mountains', label: 'Montañas' },
+                      { id: 'cross_stitch', label: 'Punto de Cruz' },
+                      { id: 'composition_marble', label: 'Mármol' },
                       { id: 'wind_currents', label: 'C. Viento' },
-                      { id: 'river_flow', label: 'Flujo Río' },
-                      { id: 'leaves_fall', label: 'Hojas Caídas' }
+                      { id: 'river_flow', label: 'Flujo Río' }
                     ].map(type => (
                       <button
                         key={type.id}

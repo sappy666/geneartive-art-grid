@@ -271,12 +271,40 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
                 waveDy = (Math.cos(p.x0 * frequency * 0.05 + time * 1.2) * 0.6 + Math.sin(time * 4.5 + p.y0 * 0.1) * 0.4) * amplitude * 1.4;
                 break;
               }
-              case 'butterfly': {
-                const cx = dimensions.width / 2;
-                const dx = Math.abs(p.x0 - cx);
-                const flutter = Math.sin(time * 5.5 + dx * frequency * 0.12) * Math.exp(-dx * 0.004);
-                waveDx = (p.x0 < cx ? -1 : 1) * flutter * amplitude * 1.5;
-                waveDy = Math.cos(time * 3 + p.y0 * frequency * 0.08) * flutter * amplitude * 1.0;
+              case 'escher_stairs': {
+                // Step-like transformation creating interlocking stair grids reminiscent of M.C. Escher
+                waveDx = (Math.floor(fx * 5 + fy * 5) % 2 === 0 ? amplitude : -amplitude) * 0.4 + Math.sin(fy * 10 + time) * amplitude * 0.2;
+                waveDy = (Math.floor(fx * 5 - fy * 5) % 2 === 0 ? amplitude : -amplitude) * 0.4 + Math.cos(fx * 10 + time) * amplitude * 0.2;
+                waveDx = Math.round(waveDx / 5) * 5;
+                waveDy = Math.round(waveDy / 5) * 5;
+                break;
+              }
+              case 'growing_mountains': {
+                // Simulate rising and growing mountain range silhouettes
+                const peak = Math.exp(-Math.pow((p.x0 / dimensions.width - 0.5) * 2.2, 2) * 2.5); // centered mountain envelope
+                const noiseFactor = Math.sin(fx * 3 + time * 0.3) * 0.4 + Math.sin(fx * 8 + time * 1.2) * 0.15;
+                // Deform points vertically proportional to distance to create ridges
+                waveDy = -peak * amplitude * 3.5 * (1.0 + noiseFactor) * (p.y0 / dimensions.height);
+                waveDx = Math.sin(fy * 6 + time) * amplitude * 0.25;
+                break;
+              }
+              case 'cross_stitch': {
+                // Force coordinates onto regular quantized diagonal positions to form x-shaped stitches
+                const cellX = Math.floor(p.x0 / (dimensions.width / cols));
+                const cellY = Math.floor(p.y0 / (dimensions.height / rows));
+                const stitchDir = (cellX + cellY) % 2 === 0 ? 1 : -1;
+                waveDx = stitchDir * amplitude * 0.6 + Math.sin(time + cellY) * (amplitude * 0.1);
+                waveDy = -stitchDir * amplitude * 0.6 + Math.cos(time + cellX) * (amplitude * 0.1);
+                break;
+              }
+              case 'composition_marble': {
+                // Domain warped noise that replicates liquid marbled swirls and composition notebook covers
+                const qx = fbm(fx * 4 + time * 0.1, fy * 4, 2);
+                const qy = fbm(fx * 4 + 1.2, fy * 4 + time * 0.1 + 2.4, 2);
+                const rx = fbm(fx * 4 + qx * 3.5 + time * 0.05, fy * 4 + qy * 3.5, 3);
+                const ry = fbm(fx * 4 + qx * 3.5 + 2.0, fy * 4 + qy * 3.5 + time * 0.05 + 1.5, 3);
+                waveDx = rx * amplitude * 1.8;
+                waveDy = ry * amplitude * 1.8;
                 break;
               }
               case 'wind_currents': {
@@ -291,14 +319,6 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
                 const ripple = Math.sin(p.y0 * frequency * 0.08 - flowSpeed) * Math.cos(p.x0 * frequency * 0.04);
                 waveDx = ripple * amplitude * 0.8;
                 waveDy = (1.2 + Math.sin(flowSpeed + p.x0 * 0.01)) * amplitude * 0.6;
-                break;
-              }
-              case 'leaves_fall': {
-                const driftTime = time * 1.8;
-                const fallY = Math.sin(driftTime + p.y0 * 0.02) * amplitude * 0.4;
-                const swayX = Math.cos(driftTime + p.y0 * frequency * 0.06) * amplitude * 1.2;
-                waveDx = swayX;
-                waveDy = (1.0 + Math.abs(fallY)) * amplitude * 0.6;
                 break;
               }
             }
@@ -983,7 +1003,7 @@ export const ArtCanvas = forwardRef<ArtCanvasRef, ArtCanvasProps>(({ settings, o
       }`}
     >
       <div 
-        className={`relative overflow-hidden rounded-2xl shadow-2xl border transition-all duration-300 ${
+        className={`relative overflow-hidden rounded-2xl shadow-2xl border transition-all duration-300 max-w-full max-h-full ${
           settings.darkTheme 
             ? 'border-white/10 bg-[#0c0c0d] shadow-black/80' 
             : 'border-neutral-200/50 bg-[#fafafa] shadow-neutral-200/30'

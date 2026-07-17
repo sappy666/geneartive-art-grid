@@ -1,5 +1,5 @@
 export type InteractionMode = 'repel' | 'attract' | 'vortex' | 'smudge' | 'none';
-export type DistortionType = 'sine' | 'noise' | 'vortex' | 'fold' | 'mixed' | 'neural' | 'bird' | 'butterfly' | 'wind_currents' | 'river_flow' | 'leaves_fall';
+export type DistortionType = 'sine' | 'noise' | 'vortex' | 'fold' | 'mixed' | 'neural' | 'bird' | 'escher_stairs' | 'growing_mountains' | 'cross_stitch' | 'composition_marble' | 'wind_currents' | 'river_flow';
 export type ExportResolution = '1x' | '2x' | '4x' | '8x';
 export type RenderMode = 'lines' | 'points' | 'text' | 'cad-people' | 'ascii';
 
